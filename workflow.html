@@ -164,7 +164,7 @@
 
   <div class="important">
     <strong>Segregation of Duty Enforcement</strong>
-    PayPlus enforces segregation of duty at the workflow level — the user who initiates a payment cannot also approve it, regardless of their role assignments. This control cannot be disabled. Ensure your approval threshold configuration reflects your institution's operational risk appetite.
+    PayPlus enforces segregation of duty at the workflow level — the user who initiates a payment cannot also approve it, regardless of their role assignments. This control cannot be disabled. Set your approval thresholds to reflect your institution's operational risk appetite.
   </div>
 
   <h2 id="rules-engine">Rules Engine</h2>
@@ -268,11 +268,11 @@
   </div>
 
   <ol class="step-list">
-    <li><strong>Prepare the batch file.</strong> Format the batch as a NACHA-compliant file, or as a PayPlus-format CSV/XML (PayPlus will generate the NACHA file automatically). Ensure all mandatory fields — ABA, account number, amount, SEC code, addenda — are populated.</li>
+    <li><strong>Prepare the batch file.</strong> Format the batch as a NACHA-compliant file, or as a PayPlus-format CSV/XML (PayPlus will generate the NACHA file automatically). Make sure all required fields — ABA, account number, amount, SEC code, addenda — are populated.</li>
     <li><strong>Upload the batch file</strong> via <strong>Payments &gt; Bulk Upload</strong> or submit via the REST API endpoint <code>POST /api/v2/payments/ach/batch</code>.</li>
     <li><strong>Validation pass:</strong> PayPlus validates all records in the batch. Invalid records are flagged individually. The batch can be submitted with valid records only, or returned to the originator for correction.</li>
     <li><strong>Compliance screening:</strong> Each transaction in the batch is screened individually against OFAC. Matches are held; clean transactions continue to approval.</li>
-    <li><strong>Batch approval:</strong> If batch approval is required (configured in Workflow &gt; Bulk Processing Settings), a Payments Manager approves the batch as a whole. Individual item approval is not required for approved batches.</li>
+    <li><strong>Batch approval:</strong> If batch approval is required (configured in Workflow &gt; Bulk Processing Settings), a Payments Manager approves the batch as a whole — individual items don't need separate approval.</li>
     <li><strong>NACHA file submission:</strong> PayPlus generates the NACHA file, calculates hash totals, and submits to FedACH or EPN at the next processing window.</li>
   </ol>
 
