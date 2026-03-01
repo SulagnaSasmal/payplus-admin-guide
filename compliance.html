@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Compliance Configuration — PayPlus Enterprise Administration Guide</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <a class="header-brand" href="index.html">PayPlus Enterprise <span>· Administration Guide</span></a>
+  <div class="header-breadcrumb"><a href="index.html">Home</a> › Compliance Configuration</div>
+  <span class="header-rail-badge">v3.2</span>
+</header>
+
+<nav class="sidebar">
+  <div class="nav-section">Overview</div>
+  <a href="index.html">Introduction</a>
+  <a href="index.html#architecture">Architecture</a>
+  <div class="nav-section">Administration</div>
+  <a href="installation.html">Installation</a>
+  <a href="user-management.html">User Management</a>
+  <div class="nav-section">Payment Configuration</div>
+  <a href="payment-rails.html">Payment Rail Connectors</a>
+  <div class="nav-section">Operations</div>
+  <a href="workflow.html">Workflow Engine</a>
+  <a href="monitoring.html">Monitoring &amp; Alerts</a>
+  <a href="compliance.html" class="active">Compliance Configuration</a>
+  <div class="nav-section">Reference</div>
+  <a href="troubleshooting.html">Troubleshooting</a>
+  <div class="nav-section">On This Page</div>
+  <a href="#ofac">OFAC Screening</a>
+  <a href="#hold-queue">Hold Queue Management</a>
+  <a href="#aml">AML Integration</a>
+  <a href="#travel-rule">Travel Rule</a>
+  <a href="#audit-trail">Audit Trail</a>
+  <a href="#regulatory-reporting">Regulatory Reporting</a>
+</nav>
+
+<main class="main">
+
+  <h1>Compliance Configuration</h1>
+  <p class="topic-meta">
+    <span>Applies to: PayPlus Enterprise v3.2</span>
+    <span>Last updated: March 2026</span>
+  </p>
+
+  <div class="important">
+    <strong>Mandatory Compliance Controls</strong>
+    OFAC screening and BSA Travel Rule compliance are mandatory for all US financial institutions processing payments. The compliance controls described in this section cannot be disabled in production environments. Configuration changes to compliance rules require approval from your institution's BSA/Compliance Officer and must be logged in the change management system.
+  </div>
+
+  <h2 id="ofac">OFAC Sanctions Screening</h2>
+  <p>
+    PayPlus Enterprise performs mandatory OFAC screening on every outgoing payment before submission to the payment network. Screening checks the payment against the OFAC Specially Designated Nationals (SDN) List and applicable country-level sanctions programs. For instant payment rails (RTP, FedNow), screening must complete within seconds — PayPlus uses an in-memory screening engine to meet real-time processing requirements.
+  </p>
+
+  <h3>Screening Engine Configuration</h3>
+  <p>Navigate to <strong>Administration &gt; Compliance &gt; OFAC Screening</strong>.</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Parameter</th><th>Description</th><th>Recommended Value</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><code>ofac.screening.enabled</code></td>
+          <td>Master switch for OFAC screening. Cannot be set to <code>false</code> in production environments — the system will refuse to start with screening disabled.</td>
+          <td><code>true</code> (mandatory)</td>
+        </tr>
+        <tr>
+          <td><code>ofac.list.update.mode</code></td>
+          <td>How OFAC lists are updated: <code>AUTOMATIC</code> (PayPlus polls OFAC SDN API daily) or <code>MANUAL</code> (administrator uploads updated list file).</td>
+          <td><code>AUTOMATIC</code></td>
+        </tr>
+        <tr>
+          <td><code>ofac.list.update.time</code></td>
+          <td>Time of day (UTC) for automatic SDN list update. OFAC updates lists weekdays; schedule during low-traffic hours.</td>
+          <td><code>02:00</code></td>
+        </tr>
+        <tr>
+          <td><code>ofac.match.threshold</code></td>
+          <td>Fuzzy match score (0–100) above which a name match is treated as a <em>Possible Match</em> and routed to compliance hold. Lower values reduce false negatives but increase false positive hold volume.</td>
+          <td><code>85</code></td>
+        </tr>
+        <tr>
+          <td><code>ofac.exact.match.action</code></td>
+          <td>Action when an exact SDN match is found: <code>HOLD</code> (route to compliance hold for officer review) or <code>BLOCK</code> (automatically reject payment).</td>
+          <td><code>HOLD</code> (recommended — exact blocking without human review creates legal risk)</td>
+        </tr>
+        <tr>
+          <td><code>ofac.possible.match.action</code></td>
+          <td>Action for fuzzy possible matches above the match threshold.</td>
+          <td><code>HOLD</code></td>
+        </tr>
+        <tr>
+          <td><code>ofac.screen.fields</code></td>
+          <td>Payment fields screened against OFAC lists. Comma-separated list. Always include originator name, beneficiary name, and intermediary bank.</td>
+          <td><code>originator.name,originator.address,beneficiary.name,beneficiary.address,intermediary.name</code></td>
+        </tr>
+        <tr>
+          <td><code>ofac.timeout.action</code></td>
+          <td>Action if the screening engine does not respond within the timeout window. <code>HOLD</code> (route to compliance hold) is required for instant payments; <code>BLOCK</code> is not recommended (would block all payments during outage).</td>
+          <td><code>HOLD</code></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Sanctions List Management</h3>
+  <p>
+    PayPlus screens against the following OFAC-maintained lists (updated automatically when <code>ofac.list.update.mode = AUTOMATIC</code>):
+  </p>
+  <ul>
+    <li><strong>SDN List</strong> — Specially Designated Nationals and Blocked Persons. Primary screening list for all payments.</li>
+    <li><strong>Consolidated Sanctions List</strong> — Includes all OFAC-administered programs (SDN, FSE, NS-ISA, SSI, and others).</li>
+    <li><strong>Country Embargo Programs</strong> — Comprehensive embargoes (Cuba, Iran, North Korea, Syria, Russia SDN). PayPlus flags payments to/from embargoed countries regardless of name match score.</li>
+  </ul>
+
+  <p>To manually upload an updated OFAC list (if using <code>MANUAL</code> update mode): Navigate to <strong>Administration &gt; Compliance &gt; List Management &gt; Upload OFAC List</strong>. Upload the OFAC-provided XML file. PayPlus validates the file format, imports the list, and logs the update in the audit trail.</p>
+
+  <div class="warning">
+    <strong>List Currency Requirement</strong>
+    OFAC sanctions lists must be updated at minimum daily. If automatic updates are configured, verify that the last successful update timestamp (shown in Administration &gt; Compliance &gt; List Status) is within the past 24 hours. Stale list alerts are generated if no update has occurred within 48 hours.
+  </div>
+
+  <h2 id="hold-queue">Hold Queue Management</h2>
+  <p>
+    Payments routed to compliance hold appear in the OFAC Hold Queue, accessible to Compliance Officers at <strong>Compliance &gt; Hold Queue</strong>. Each held payment displays: payment details, screening match information (matched field, matched name, SDN entry, match score), and the hold timestamp.
+  </p>
+
+  <h3>Compliance Officer Actions</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Action</th><th>Condition</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>Release — Clear</strong></td>
+          <td>Officer determines the match is a false positive (e.g., common name, different individual). Must document the basis for the clear decision.</td>
+          <td>Payment proceeds to the next workflow step (approval or submission). Compliance decision logged in audit trail.</td>
+        </tr>
+        <tr>
+          <td><strong>Release — Escalate to BSA</strong></td>
+          <td>Match is possible but requires senior BSA review before a release decision can be made.</td>
+          <td>Payment remains in hold. BSA manager is notified. Payment flagged for senior review in the hold queue.</td>
+        </tr>
+        <tr>
+          <td><strong>Reject</strong></td>
+          <td>Officer determines the payment involves a sanctioned party. Payment must not be processed.</td>
+          <td>Payment is rejected. Originator is notified per compliance procedure. SAR filing evaluation is triggered. Blocked funds procedures apply (OFAC report may be required).</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="important">
+    <strong>OFAC Blocked Funds Reporting</strong>
+    If a payment is rejected because the funds are blocked (matched against a sanctioned party), the institution is required to file an OFAC Blocked Property Report within 10 business days. PayPlus generates a draft report in PDF format from the compliance hold record. The BSA Officer must review, complete, and submit the report to OFAC.
+  </div>
+
+  <h2 id="aml">AML Integration</h2>
+  <p>
+    PayPlus Enterprise integrates with external AML platforms (NICE Actimize, Oracle FCCM, and others) via the PayPlus Compliance API. AML integration is optional — institutions that perform AML transaction monitoring outside of PayPlus (e.g., in the core banking system) do not need to configure this integration.
+  </p>
+
+  <p>Configure AML integration at <strong>Administration &gt; Compliance &gt; AML Integration</strong>.</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Parameter</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>aml.integration.enabled</code></td><td>Enable the AML integration adapter. Default: <code>false</code>.</td></tr>
+        <tr><td><code>aml.provider</code></td><td>AML platform type: <code>ACTIMIZE</code>, <code>ORACLE_FCCM</code>, or <code>GENERIC_REST</code>.</td></tr>
+        <tr><td><code>aml.endpoint.url</code></td><td>REST API endpoint of the AML platform for real-time transaction event submission.</td></tr>
+        <tr><td><code>aml.event.mode</code></td><td><code>SYNCHRONOUS</code> — PayPlus waits for AML response before proceeding (adds latency; not suitable for instant payments). <code>ASYNCHRONOUS</code> — PayPlus submits the event and continues processing; AML response triggers a compliance hold if flagged.</td></tr>
+        <tr><td><code>aml.event.types</code></td><td>Payment events forwarded to AML: <code>PAYMENT_INITIATED</code>, <code>PAYMENT_SETTLED</code>, <code>PAYMENT_RETURNED</code>. For AML transaction monitoring, at minimum submit <code>PAYMENT_SETTLED</code>.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="travel-rule">Travel Rule (31 CFR 103.33 / FinCEN)</h2>
+  <p>
+    The BSA Travel Rule requires financial institutions to pass certain identifying information about the originator and beneficiary with wire transfers and certain electronic funds transfers of $3,000 or more. PayPlus automatically includes required Travel Rule fields in applicable payment messages.
+  </p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Rail</th><th>Threshold</th><th>Required Fields</th><th>PayPlus Implementation</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>Fedwire (pacs.008)</td>
+          <td>$3,000+</td>
+          <td>Originator name, address, account number; Beneficiary name, address, account number</td>
+          <td>Included in pacs.008 Debtor/Creditor fields. PayPlus validates these fields are populated before submission for amounts ≥ $3,000.</td>
+        </tr>
+        <tr>
+          <td>SWIFT (MT 103 / pacs.008)</td>
+          <td>$3,000+</td>
+          <td>Ordering customer full details (Field 50K); Beneficiary customer full details (Field 59)</td>
+          <td>Field 50K and Field 59 are mandatory for MT 103 above threshold. PayPlus blocks submission if these fields are incomplete.</td>
+        </tr>
+        <tr>
+          <td>ACH</td>
+          <td>$3,000+ (IAT SEC code)</td>
+          <td>Required for International ACH Transactions (IAT): originator and beneficiary name, address, identification number</td>
+          <td>IAT addenda records automatically populated from payment instruction data. CCD/PPD domestic ACH follows separate FinCEN requirements.</td>
+        </tr>
+        <tr>
+          <td>RTP / FedNow</td>
+          <td>No current threshold — FinCEN rulemaking pending</td>
+          <td>Originator/beneficiary information passed in ISO 20022 pacs.008 structured fields</td>
+          <td>PayPlus populates structured debtor/creditor fields in all RTP and FedNow pacs.008 messages regardless of amount.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Travel Rule Validation Settings</h3>
+  <p>Navigate to <strong>Administration &gt; Compliance &gt; Travel Rule</strong>:</p>
+  <ul>
+    <li><code>travel.rule.threshold</code> — Default: <code>3000</code>. Adjust only if regulatory guidance changes the threshold.</li>
+    <li><code>travel.rule.block.on.missing.fields</code> — Default: <code>true</code>. When <code>true</code>, PayPlus blocks submission of payments above threshold if required originator/beneficiary fields are incomplete. Set to <code>false</code> only for testing — never in production.</li>
+    <li><code>travel.rule.address.required</code> — Default: <code>true</code>. When <code>true</code>, structured address fields (street, city, state, country) are required in addition to the name and account number for amounts above threshold.</li>
+  </ul>
+
+  <h2 id="audit-trail">Compliance Audit Trail</h2>
+  <p>
+    All compliance actions are logged in the PayPlus Compliance Audit Trail — a dedicated audit record separate from the general system audit log. The compliance audit trail captures:
+  </p>
+  <ul>
+    <li>Every OFAC screening result for every payment (Clear / Possible Match / Match / Error)</li>
+    <li>Hold queue actions by Compliance Officers (Release / Reject / Escalate) with full decision text</li>
+    <li>AML event submissions and responses (if AML integration enabled)</li>
+    <li>Travel Rule validation results and any overrides</li>
+    <li>Sanctions list update events (update timestamp, list version, record count)</li>
+    <li>Changes to compliance configuration (who changed what, when)</li>
+  </ul>
+
+  <p>Access the compliance audit trail at <strong>Compliance &gt; Audit Trail</strong>. The trail is accessible to Compliance Officers and Read-Only Auditors. Export to PDF or CSV for regulatory examination support.</p>
+
+  <h2 id="regulatory-reporting">Regulatory Reporting</h2>
+  <p>PayPlus generates the following compliance reports to support regulatory obligations:</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Report</th><th>Regulatory Basis</th><th>Generation</th></tr></thead>
+      <tbody>
+        <tr><td>OFAC Blocked Funds Report</td><td>OFAC requirement — file within 10 business days of blocking</td><td>On-demand from the compliance hold record</td></tr>
+        <tr><td>OFAC Annual Report (31 CFR 501.603)</td><td>Annual census of blocked funds</td><td>Auto-generated January 1; Compliance &gt; Reports &gt; OFAC Annual Report</td></tr>
+        <tr><td>CTR Support Data</td><td>BSA Currency Transaction Report (FinCEN Form 112) for cash transactions — not a direct wire report, but supporting data</td><td>On-demand; exports transaction data for CTR filing in FinCEN XML format</td></tr>
+        <tr><td>Wire Transfer Record (31 CFR 103.33)</td><td>BSA record-keeping for wire transfers of $3,000+ — 5-year retention required</td><td>Auto-generated daily; archived automatically per retention policy</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="tip">
+    <strong>Examination Readiness</strong>
+    Configure Read-Only Auditor accounts for examiners (bank examiners from the OCC, Federal Reserve, FDIC, or FinCEN) before examination begins. Provide time-limited access (set account expiry date). All examiner actions in the system are audit-logged automatically.
+  </div>
+
+  <div class="doc-nav">
+    <a href="monitoring.html">← Monitoring &amp; Alerts</a>
+    <a href="troubleshooting.html">Next: Troubleshooting →</a>
+  </div>
+
+</main>
+
+<footer class="site-footer">
+  <span>PayPlus Enterprise · Compliance Configuration · v3.2 · March 2026</span>
+  <span>Internal Use Only — Confidential</span>
+</footer>
+
+</body>
+</html>

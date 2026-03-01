@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Workflow Engine — PayPlus Enterprise Administration Guide</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <a class="header-brand" href="index.html">PayPlus Enterprise <span>· Administration Guide</span></a>
+  <div class="header-breadcrumb"><a href="index.html">Home</a> › Workflow Engine</div>
+  <span class="header-rail-badge">v3.2</span>
+</header>
+
+<nav class="sidebar">
+  <div class="nav-section">Overview</div>
+  <a href="index.html">Introduction</a>
+  <a href="index.html#architecture">Architecture</a>
+  <div class="nav-section">Administration</div>
+  <a href="installation.html">Installation</a>
+  <a href="user-management.html">User Management</a>
+  <div class="nav-section">Payment Configuration</div>
+  <a href="payment-rails.html">Payment Rail Connectors</a>
+  <div class="nav-section">Operations</div>
+  <a href="workflow.html" class="active">Workflow Engine</a>
+  <a href="monitoring.html">Monitoring &amp; Alerts</a>
+  <a href="compliance.html">Compliance Configuration</a>
+  <div class="nav-section">Reference</div>
+  <a href="troubleshooting.html">Troubleshooting</a>
+  <div class="nav-section">On This Page</div>
+  <a href="#lifecycle">Payment Lifecycle</a>
+  <a href="#approval-workflows">Approval Workflows</a>
+  <a href="#rules-engine">Rules Engine</a>
+  <a href="#stp">STP Configuration</a>
+  <a href="#templates">Payment Templates</a>
+  <a href="#bulk">Bulk Processing</a>
+</nav>
+
+<main class="main">
+
+  <h1>Workflow Engine</h1>
+  <p class="topic-meta">
+    <span>Applies to: PayPlus Enterprise v3.2</span>
+    <span>Last updated: March 2026</span>
+  </p>
+
+  <p>
+    The PayPlus Workflow Engine controls how payment instructions move through validation, approval, compliance screening, and submission to the payment network. Administrators configure the workflow to match the institution's operational controls, segregation of duty requirements, and risk appetite.
+  </p>
+
+  <h2 id="lifecycle">Payment Lifecycle States</h2>
+  <p>Every payment in PayPlus moves through a defined set of states. The transition between states is governed by the workflow configuration and the actions taken by operations staff.</p>
+
+  <div class="flow-diagram">
+    <div class="flow-box">Draft</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box">Validated</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box">Compliance<br>Review</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box">Approved</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box">Submitted</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box">Settled</div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>State</th><th>Description</th><th>Who Can Act</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="badge badge-gray">Draft</span></td>
+          <td>Payment instruction entered but not yet submitted for processing. The initiator can edit or delete the payment.</td>
+          <td>Payments Processor (owner only)</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-blue">Validated</span></td>
+          <td>Payment has passed format validation (mandatory fields, ISO 20022 schema compliance, NACHA field rules). Not yet approved or screened.</td>
+          <td>System (automatic transition)</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-yellow">Compliance Hold</span></td>
+          <td>Payment has matched an OFAC screening rule or hit a compliance threshold. Held for Compliance Officer review before further processing.</td>
+          <td>Compliance Officer (release or reject)</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-yellow">Pending Approval</span></td>
+          <td>Payment is awaiting approval from a Payments Manager. Triggered when dual-control workflow is configured and the payment meets the approval threshold.</td>
+          <td>Payments Manager (approve or reject)</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-blue">Approved</span></td>
+          <td>Payment has passed all approval and compliance steps. Queued for submission to the rail connector at the next applicable processing window.</td>
+          <td>System (queued for submission)</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-blue">Submitted</span></td>
+          <td>Payment has been transmitted to the payment network. Awaiting settlement confirmation (for batch rails) or real-time acceptance (for instant rails).</td>
+          <td>System</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-green">Settled</span></td>
+          <td>Payment has been confirmed as settled by the payment network. For ACH, settlement confirmation is received from FedACH. For Fedwire/RTP/FedNow, settlement is immediate upon acceptance.</td>
+          <td>System (terminal state)</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-red">Rejected</span></td>
+          <td>Payment was rejected at validation, compliance review, approval, or by the payment network. Rejection reason is captured in the payment record.</td>
+          <td>System / Compliance Officer / Payments Manager (terminal state)</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-red">Returned</span></td>
+          <td>Payment was accepted by the network but subsequently returned (ACH R-code returns, RTP return for invalid account). Returned payments require operations action.</td>
+          <td>Payments Manager (action required)</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="approval-workflows">Approval Workflow Configuration</h2>
+  <p>
+    PayPlus supports three approval workflow models. Configure the model at <strong>Administration &gt; Workflow &gt; Approval Settings</strong>, independently for each payment rail.
+  </p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Workflow Model</th><th>Description</th><th>Applicable Scenarios</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>STP — No Approval Required</strong></td>
+          <td>Payments pass directly from Validated to Approved state without a manual approval step. Compliance screening still occurs.</td>
+          <td>Low-value payments below defined threshold; automated batch ACH from host systems via API; receive-only FedNow processing</td>
+        </tr>
+        <tr>
+          <td><strong>Single Approval</strong></td>
+          <td>Payment requires approval by one Payments Manager before submission. The initiating Payments Processor cannot approve their own payment.</td>
+          <td>Mid-value payments; institutions with lighter approval requirements</td>
+        </tr>
+        <tr>
+          <td><strong>Dual Control</strong></td>
+          <td>Payment requires approval from two separate Payments Managers. The initiating processor and the first approver cannot also be the second approver. Required for high-value wire transfers at most institutions.</td>
+          <td>High-value Fedwire and SWIFT transactions; all transactions above a defined limit regardless of rail</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Configuring Amount Thresholds</h3>
+  <p>Configure approval thresholds at <strong>Administration &gt; Workflow &gt; Amount Thresholds</strong>. Thresholds are configured per rail and per user role. Payments below the STP threshold pass without approval; payments above the dual-control threshold require dual approval.</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Threshold</th><th>Behavior</th><th>Configuration Path</th></tr></thead>
+      <tbody>
+        <tr><td>STP Limit</td><td>Payments at or below this amount are automatically approved (no manual approval required)</td><td>Workflow &gt; Thresholds &gt; STP Limit (per rail)</td></tr>
+        <tr><td>Single Approval Limit</td><td>Payments above STP Limit and at or below this amount require single-manager approval</td><td>Workflow &gt; Thresholds &gt; Single Approval Limit</td></tr>
+        <tr><td>Dual Control Threshold</td><td>Payments above this amount require dual-control approval from two separate managers</td><td>Workflow &gt; Thresholds &gt; Dual Control Threshold</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="important">
+    <strong>Segregation of Duty Enforcement</strong>
+    PayPlus enforces segregation of duty at the workflow level — the user who initiates a payment cannot also approve it, regardless of their role assignments. This control cannot be disabled. Ensure your approval threshold configuration reflects your institution's operational risk appetite.
+  </div>
+
+  <h2 id="rules-engine">Rules Engine</h2>
+  <p>
+    The PayPlus Rules Engine evaluates each payment against a configurable set of business rules before processing. Rules can route payments to specific approval queues, flag payments for additional review, block payment submission, or modify processing parameters.
+  </p>
+
+  <h3>Rule Types</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Rule Type</th><th>Description</th><th>Example</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>Routing Rule</strong></td>
+          <td>Determines which payment rail to use for a given payment instruction, based on beneficiary bank participation, amount, and customer preferences.</td>
+          <td>If Receiving Bank participates in FedNow AND amount ≤ $500,000 → route to FedNow; else if participates in RTP → route to RTP; else route to Fedwire</td>
+        </tr>
+        <tr>
+          <td><strong>Approval Routing Rule</strong></td>
+          <td>Directs a payment to a specific approval queue or approver group, overriding the default approval workflow.</td>
+          <td>If payment type = international SWIFT AND amount &gt; $1,000,000 → route to Treasury Manager approval queue</td>
+        </tr>
+        <tr>
+          <td><strong>Block Rule</strong></td>
+          <td>Prevents payment submission based on defined criteria. Blocked payments are rejected with the configured rejection reason.</td>
+          <td>If beneficiary country = sanctioned country → block; If transaction type = RTP AND beneficiary is first-time payee AND amount &gt; $10,000 → block (pending verification)</td>
+        </tr>
+        <tr>
+          <td><strong>Enrichment Rule</strong></td>
+          <td>Automatically adds or modifies payment fields based on rule conditions. Used to populate mandatory ISO 20022 fields or apply institution-specific codes.</td>
+          <td>If payment purpose code is blank AND payment type = payroll → set purpose code to SALA</td>
+        </tr>
+        <tr>
+          <td><strong>Velocity Control Rule</strong></td>
+          <td>Limits the number or value of payments from a specific originator or to a specific beneficiary within a defined time window.</td>
+          <td>Maximum 5 RTP payments per customer per hour; Maximum $50,000 cumulative FedNow per customer per day</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Creating a Rule</h3>
+  <p>Navigate to <strong>Administration &gt; Workflow &gt; Rules Engine &gt; Add Rule</strong>.</p>
+  <ol class="step-list">
+    <li>Enter a <strong>Rule Name</strong> and optional description. Names must be unique across all rule types.</li>
+    <li>Select the <strong>Rule Type</strong> (Routing, Approval Routing, Block, Enrichment, or Velocity Control).</li>
+    <li>Define the <strong>Conditions</strong> using the rule builder. Multiple conditions can be combined with AND / OR logic. Available condition fields include: payment amount, payment rail, originator ID, beneficiary bank routing number, beneficiary country, payment purpose code, time of day, day of week.</li>
+    <li>Define the <strong>Action</strong> that the rule applies when all conditions are met.</li>
+    <li>Set the <strong>Rule Priority</strong> (1 = highest priority). When multiple rules apply to the same payment, the highest-priority rule takes effect.</li>
+    <li>Select the <strong>Effective Date</strong> (future dating allows rules to be pre-configured before activation).</li>
+    <li>Click <strong>Save and Test</strong> to validate the rule against a sample payment before activating it in production.</li>
+  </ol>
+
+  <h2 id="stp">Straight-Through Processing (STP) Configuration</h2>
+  <p>
+    STP allows eligible payments to be automatically processed without manual intervention — from initiation through compliance screening to network submission. STP is appropriate for standardized, low-risk, high-volume payment types (e.g., payroll ACH batches originating from the core banking system via API).
+  </p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>STP Eligibility Criterion</th><th>Configuration</th></tr></thead>
+      <tbody>
+        <tr><td>Payment amount at or below STP Limit</td><td>Configured in Workflow &gt; Thresholds (per rail)</td></tr>
+        <tr><td>Payment originates from trusted API source</td><td>Configure trusted API Integration User in Administration &gt; Users; payments from this user bypass manual initiation approval</td></tr>
+        <tr><td>Beneficiary on pre-approved list</td><td>Workflow &gt; STP Beneficiary Whitelist — payments to whitelisted beneficiary accounts skip approval step</td></tr>
+        <tr><td>No OFAC match</td><td>Automatic — payments with OFAC screening result of CLEAR proceed; MATCH or POSSIBLE MATCH always enter compliance hold regardless of STP configuration</td></tr>
+        <tr><td>Payment type is NACHA Standard (non-SDA)</td><td>Standard ACH processing qualifies for STP; Same-Day ACH payments above $5,000 require approval regardless of STP threshold</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="templates">Payment Templates</h2>
+  <p>
+    Payment templates store pre-configured payment instructions for recurring or standardized payments — reducing data entry errors and processing time for high-frequency transactions.
+  </p>
+  <p>
+    Navigate to <strong>Administration &gt; Workflow &gt; Payment Templates</strong> to create templates. Templates can be restricted to specific roles (e.g., only Payments Manager can create templates; Payments Processor can use but not create templates).
+  </p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Template Field</th><th>Template Behavior</th></tr></thead>
+      <tbody>
+        <tr><td>Beneficiary name and account</td><td>Fixed — cannot be modified when using the template</td></tr>
+        <tr><td>Payment rail</td><td>Fixed — template is rail-specific</td></tr>
+        <tr><td>Payment amount</td><td>Optional — can be fixed (recurring fixed payment) or left open for operator entry at initiation</td></tr>
+        <tr><td>Payment purpose / remittance</td><td>Pre-populated but editable at initiation</td></tr>
+        <tr><td>Approval workflow</td><td>Inherits the standard workflow; templates do not override approval thresholds</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="bulk">Bulk Payment Processing</h2>
+  <p>
+    PayPlus supports bulk ACH batch processing for high-volume origination scenarios — payroll, vendor disbursements, benefits payments. Bulk files can be uploaded via the Web Console or submitted via the API.
+  </p>
+
+  <div class="note">
+    <strong>Bulk ACH Processing Flow</strong>
+    Bulk ACH batches undergo the same compliance screening and approval workflow as individual payments. For large batches, configure a dedicated Bulk Approver role or a batch-specific STP rule to avoid requiring individual approval for each item in a payroll batch.
+  </div>
+
+  <ol class="step-list">
+    <li><strong>Prepare the batch file.</strong> Format the batch as a NACHA-compliant file, or as a PayPlus-format CSV/XML (PayPlus will generate the NACHA file automatically). Ensure all mandatory fields — ABA, account number, amount, SEC code, addenda — are populated.</li>
+    <li><strong>Upload the batch file</strong> via <strong>Payments &gt; Bulk Upload</strong> or submit via the REST API endpoint <code>POST /api/v2/payments/ach/batch</code>.</li>
+    <li><strong>Validation pass:</strong> PayPlus validates all records in the batch. Invalid records are flagged individually. The batch can be submitted with valid records only, or returned to the originator for correction.</li>
+    <li><strong>Compliance screening:</strong> Each transaction in the batch is screened individually against OFAC. Matches are held; clean transactions continue to approval.</li>
+    <li><strong>Batch approval:</strong> If batch approval is required (configured in Workflow &gt; Bulk Processing Settings), a Payments Manager approves the batch as a whole. Individual item approval is not required for approved batches.</li>
+    <li><strong>NACHA file submission:</strong> PayPlus generates the NACHA file, calculates hash totals, and submits to FedACH or EPN at the next processing window.</li>
+  </ol>
+
+  <div class="doc-nav">
+    <a href="payment-rails.html">← Payment Rail Connectors</a>
+    <a href="monitoring.html">Next: Monitoring &amp; Alerts →</a>
+  </div>
+
+</main>
+
+<footer class="site-footer">
+  <span>PayPlus Enterprise · Workflow Engine · v3.2 · March 2026</span>
+  <span>Internal Use Only — Confidential</span>
+</footer>
+
+</body>
+</html>

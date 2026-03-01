@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monitoring &amp; Alerts — PayPlus Enterprise Administration Guide</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <a class="header-brand" href="index.html">PayPlus Enterprise <span>· Administration Guide</span></a>
+  <div class="header-breadcrumb"><a href="index.html">Home</a> › Monitoring &amp; Alerts</div>
+  <span class="header-rail-badge">v3.2</span>
+</header>
+
+<nav class="sidebar">
+  <div class="nav-section">Overview</div>
+  <a href="index.html">Introduction</a>
+  <a href="index.html#architecture">Architecture</a>
+  <div class="nav-section">Administration</div>
+  <a href="installation.html">Installation</a>
+  <a href="user-management.html">User Management</a>
+  <div class="nav-section">Payment Configuration</div>
+  <a href="payment-rails.html">Payment Rail Connectors</a>
+  <div class="nav-section">Operations</div>
+  <a href="workflow.html">Workflow Engine</a>
+  <a href="monitoring.html" class="active">Monitoring &amp; Alerts</a>
+  <a href="compliance.html">Compliance Configuration</a>
+  <div class="nav-section">Reference</div>
+  <a href="troubleshooting.html">Troubleshooting</a>
+  <div class="nav-section">On This Page</div>
+  <a href="#dashboard">System Dashboard</a>
+  <a href="#payment-queue">Payment Queue Monitor</a>
+  <a href="#alerts">Alert Configuration</a>
+  <a href="#sla">SLA Monitoring</a>
+  <a href="#audit-logs">Audit Logs</a>
+  <a href="#reports">Settlement Reports</a>
+</nav>
+
+<main class="main">
+
+  <h1>Monitoring &amp; Alerts</h1>
+  <p class="topic-meta">
+    <span>Applies to: PayPlus Enterprise v3.2</span>
+    <span>Last updated: March 2026</span>
+  </p>
+
+  <p>
+    PayPlus Enterprise provides a real-time monitoring console for payment queue visibility, connector health, compliance status, and settlement activity. Alert rules notify operations staff of conditions requiring attention — connector failures, processing backlogs, liquidity thresholds, and SLA breaches.
+  </p>
+
+  <div class="note">
+    <strong>24/7 Monitoring Requirement</strong>
+    Real-time payment rails (RTP, FedNow) operate 24/7/365. Monitoring coverage and alert notification must be active at all hours, including weekends and holidays. Ensure your on-call escalation procedures are configured in the alert notification settings.
+  </div>
+
+  <h2 id="dashboard">System Dashboard</h2>
+  <p>
+    The System Dashboard is the default landing page for Payments Managers and System Administrators. It provides a consolidated view of payment processing health across all active rails.
+  </p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Dashboard Widget</th><th>What It Shows</th><th>Refresh Interval</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>Connector Status</strong></td>
+          <td>Online / Offline status for each enabled rail connector. Clicking a connector opens the connector detail view with last-message timestamp and session statistics.</td>
+          <td>30 seconds</td>
+        </tr>
+        <tr>
+          <td><strong>Payment Queue Summary</strong></td>
+          <td>Count of payments by state: Pending Approval, Compliance Hold, Approved (queued), Submitted, Settled, Rejected in the current business day.</td>
+          <td>60 seconds</td>
+        </tr>
+        <tr>
+          <td><strong>Today's Volume</strong></td>
+          <td>Total payment count and total value processed today, broken down by rail. Compares against same day prior week (7-day comparison).</td>
+          <td>5 minutes</td>
+        </tr>
+        <tr>
+          <td><strong>OFAC Hold Queue</strong></td>
+          <td>Count of payments currently in Compliance Hold status. Visible to Compliance Officers and Payments Managers. Clicking opens the hold queue detail view.</td>
+          <td>60 seconds</td>
+        </tr>
+        <tr>
+          <td><strong>Settlement Status</strong></td>
+          <td>Settlement confirmation status for today's ACH batches, Fedwire settlements, and RTP/FedNow activity. Shows pending vs. confirmed settlements and any settlement exceptions.</td>
+          <td>5 minutes</td>
+        </tr>
+        <tr>
+          <td><strong>RTP / FedNow Liquidity</strong></td>
+          <td>Current prefunded balance for RTP (TCH joint account) and FedNow (Fed master account). Color-coded: Green (above threshold), Yellow (approaching threshold), Red (below threshold).</td>
+          <td>5 minutes</td>
+        </tr>
+        <tr>
+          <td><strong>Active Alerts</strong></td>
+          <td>List of currently active alert conditions across all monitored components. Clicking an alert navigates to the alert detail and recommended action.</td>
+          <td>60 seconds</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="payment-queue">Payment Queue Monitor</h2>
+  <p>
+    The Payment Queue Monitor provides a real-time view of payments in each processing state. Navigate to <strong>Operations &gt; Payment Queue</strong>.
+  </p>
+  <p>
+    Filter payments by: state, rail, originator, date/time range, amount range. Sort by submission time, amount, or rail. Export the filtered view to CSV for reconciliation.
+  </p>
+
+  <h3>Stale Payment Detection</h3>
+  <p>
+    Payments that remain in <em>Pending Approval</em> or <em>Compliance Hold</em> state beyond a configurable threshold are flagged as stale and highlighted in the payment queue. Configure stale payment thresholds at <strong>Administration &gt; Monitoring &gt; Stale Payment Settings</strong>:
+  </p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>State</th><th>Default Stale Threshold</th><th>Action When Stale</th></tr></thead>
+      <tbody>
+        <tr><td>Pending Approval</td><td>4 hours</td><td>Alert sent to Payments Manager and supervisor; payment highlighted in queue</td></tr>
+        <tr><td>Compliance Hold</td><td>2 hours (business hours) / 8 hours (after-hours)</td><td>Alert sent to Compliance Officer and BSA manager</td></tr>
+        <tr><td>Approved (not yet submitted)</td><td>Past processing window cut-off</td><td>Alert sent to operations; payment may need manual escalation to next window</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="alerts">Alert Configuration</h2>
+  <p>
+    Configure alert rules at <strong>Administration &gt; Monitoring &gt; Alert Rules</strong>. Each rule defines a condition, a severity level, and a notification action.
+  </p>
+
+  <h3>Built-In Alert Rules</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Alert</th><th>Condition</th><th>Default Severity</th></tr></thead>
+      <tbody>
+        <tr><td>Connector Offline</td><td>Any enabled rail connector transitions from Online to Offline state</td><td><span class="badge badge-red">Critical</span></td></tr>
+        <tr><td>Connector Reconnecting</td><td>Connector is attempting to reconnect after a failure</td><td><span class="badge badge-yellow">Warning</span></td></tr>
+        <tr><td>OFAC Match Detected</td><td>Payment enters Compliance Hold due to OFAC screening match or possible match</td><td><span class="badge badge-red">Critical</span></td></tr>
+        <tr><td>Compliance Queue Depth</td><td>More than 10 payments in Compliance Hold state simultaneously</td><td><span class="badge badge-yellow">Warning</span></td></tr>
+        <tr><td>RTP Balance Low</td><td>TCH RTP prefunded balance falls below configured threshold</td><td><span class="badge badge-red">Critical</span></td></tr>
+        <tr><td>FedNow Balance Low</td><td>FedNow liquidity balance approaches LMT threshold</td><td><span class="badge badge-yellow">Warning</span></td></tr>
+        <tr><td>ACH Return Rate Elevated</td><td>ACH return rate exceeds 1.5% for unauthorized (R05/R07/R10/R29) or 3.0% overall</td><td><span class="badge badge-yellow">Warning</span></td></tr>
+        <tr><td>Settlement Exception</td><td>Settlement confirmation not received within expected window</td><td><span class="badge badge-red">Critical</span></td></tr>
+        <tr><td>Processing Window Approaching</td><td>ACH processing window cut-off is within 30 minutes with pending items in queue</td><td><span class="badge badge-blue">Info</span></td></tr>
+        <tr><td>System Health Degraded</td><td>JVM heap usage exceeds 85%; database connection pool depleted below 20%</td><td><span class="badge badge-red">Critical</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Alert Notification Methods</h3>
+  <p>Configure notification delivery at <strong>Administration &gt; Monitoring &gt; Notification Settings</strong>:</p>
+  <ul>
+    <li><strong>Email</strong> — SMTP-based email to configured distribution lists. Separate lists per severity level. Required configuration: SMTP host, port, from address, TLS.</li>
+    <li><strong>SMS / Pager</strong> — Via SMTP-to-SMS gateway. Recommended for Critical severity alerts only to avoid alert fatigue.</li>
+    <li><strong>SIEM Integration</strong> — Alert events can be forwarded to your institution's SIEM (Splunk, QRadar, etc.) via syslog (UDP/TCP) or CEF format. Configure at Administration &gt; Monitoring &gt; SIEM Integration.</li>
+    <li><strong>ServiceNow / ITSM</strong> — PayPlus can create ITSM incidents automatically for Critical alerts via REST API. Configure at Administration &gt; Monitoring &gt; ITSM Integration.</li>
+  </ul>
+
+  <h2 id="sla">SLA Monitoring</h2>
+  <p>
+    SLA monitoring tracks processing time for each payment from initiation to settlement and alerts when payments approach or breach defined SLA thresholds.
+  </p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Rail</th><th>Processing SLA</th><th>Settlement SLA</th><th>Alert Threshold</th></tr></thead>
+      <tbody>
+        <tr><td>ACH Standard</td><td>Submission by cut-off window</td><td>T+1 (standard), T+0 (SDA)</td><td>Alert if not submitted by 30 min before cut-off</td></tr>
+        <tr><td>Same-Day ACH</td><td>Submission by SDA window cut-off</td><td>Settlement same business day</td><td>Alert if not submitted by 15 min before window cut-off</td></tr>
+        <tr><td>Fedwire</td><td>Under 10 minutes from approval to submission</td><td>Real-time (RTGS)</td><td>Alert if approved payment not submitted within 15 minutes</td></tr>
+        <tr><td>SWIFT</td><td>Submission within operating hours</td><td>T+1 to T+3 (currency dependent)</td><td>Alert if not submitted within 30 min of approval</td></tr>
+        <tr><td>RTP</td><td>Under 30 seconds from initiation to settlement</td><td>Real-time</td><td>Alert if no settlement confirmation within 60 seconds</td></tr>
+        <tr><td>FedNow</td><td>Under 20 seconds end-to-end</td><td>Real-time</td><td>Alert if no settlement confirmation within 30 seconds</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="audit-logs">Audit Logs</h2>
+  <p>
+    PayPlus maintains a tamper-evident audit log of all user actions, payment state changes, configuration changes, and system events. Audit logs are written to the PayPlus Audit Repository (separate database schema) and cannot be modified or deleted by any user role including System Administrator.
+  </p>
+
+  <h3>Audit Log Access</h3>
+  <p>Navigate to <strong>Operations &gt; Audit Log</strong>. Accessible to: Compliance Officer (full), Read-Only Auditor (full), Payments Manager (payment events only).</p>
+
+  <h3>Logged Events</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Event Category</th><th>Events Logged</th></tr></thead>
+      <tbody>
+        <tr><td>Authentication</td><td>Login success, login failure, logout, password change, account lockout, account unlock</td></tr>
+        <tr><td>Payment Actions</td><td>Payment created, validated, submitted for approval, approved, rejected, submitted to network, settled, returned</td></tr>
+        <tr><td>Compliance Actions</td><td>OFAC hold triggered (with match details), hold released, hold rejected, compliance rule modified</td></tr>
+        <tr><td>Configuration Changes</td><td>Connector configuration modified, workflow rules added/changed/deleted, user role assigned/removed, password policy changed</td></tr>
+        <tr><td>System Events</td><td>Application start/stop, connector online/offline, scheduled job execution, license expiry warning</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Audit Log Retention</h3>
+  <p>Configure retention policy at <strong>Administration &gt; Audit &gt; Retention Settings</strong>. Minimum retention requirements:</p>
+  <ul>
+    <li><strong>Payment event logs:</strong> 7 years (BSA / Bank Secrecy Act requirements for wire transfer records)</li>
+    <li><strong>OFAC compliance actions:</strong> 5 years (OFAC record-keeping requirements)</li>
+    <li><strong>Authentication logs:</strong> 2 years (minimum; align with your institution's information security policy)</li>
+    <li><strong>Configuration change logs:</strong> 7 years (recommended for regulatory examination purposes)</li>
+  </ul>
+
+  <h2 id="reports">Settlement Reports</h2>
+  <p>
+    Settlement reports are available at <strong>Operations &gt; Reports</strong>. Reports can be exported as PDF, Excel, or CSV.
+  </p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Report</th><th>Description</th><th>Schedule</th></tr></thead>
+      <tbody>
+        <tr><td>Daily Settlement Summary</td><td>Total payments settled per rail; net settlement position; exceptions and open items.</td><td>Auto-generated at end of Fedwire operating day (7:30 PM ET)</td></tr>
+        <tr><td>ACH Batch Status Report</td><td>Status of all ACH batches submitted during the day: file name, record count, hash total, submission time, FedACH acknowledgement.</td><td>Auto-generated after each processing window</td></tr>
+        <tr><td>Wire Settlement Reconciliation</td><td>All Fedwire and SWIFT payments settled vs. Federal Reserve account postings. Used for daily nostro reconciliation.</td><td>On-demand; recommended end of day</td></tr>
+        <tr><td>Instant Payment Activity</td><td>All RTP and FedNow payments processed in a given period; success rate; average processing time.</td><td>Hourly (auto); on-demand</td></tr>
+        <tr><td>Compliance Hold Summary</td><td>All payments held for OFAC review; outcome (released/rejected); compliance officer action; time in hold.</td><td>Daily (auto)</td></tr>
+        <tr><td>Return and Exception Report</td><td>ACH returns, RTP returns, Fedwire recalls; reason codes; required operations actions.</td><td>Auto-generated morning of each business day</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="doc-nav">
+    <a href="workflow.html">← Workflow Engine</a>
+    <a href="compliance.html">Next: Compliance Configuration →</a>
+  </div>
+
+</main>
+
+<footer class="site-footer">
+  <span>PayPlus Enterprise · Monitoring &amp; Alerts · v3.2 · March 2026</span>
+  <span>Internal Use Only — Confidential</span>
+</footer>
+
+</body>
+</html>

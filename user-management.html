@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>User Management — PayPlus Enterprise Administration Guide</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <a class="header-brand" href="index.html">PayPlus Enterprise <span>· Administration Guide</span></a>
+  <div class="header-breadcrumb"><a href="index.html">Home</a> › User Management</div>
+  <span class="header-rail-badge">v3.2</span>
+</header>
+
+<nav class="sidebar">
+  <div class="nav-section">Overview</div>
+  <a href="index.html">Introduction</a>
+  <a href="index.html#architecture">Architecture</a>
+  <div class="nav-section">Administration</div>
+  <a href="installation.html">Installation</a>
+  <a href="user-management.html" class="active">User Management</a>
+  <div class="nav-section">Payment Configuration</div>
+  <a href="payment-rails.html">Payment Rail Connectors</a>
+  <div class="nav-section">Operations</div>
+  <a href="workflow.html">Workflow Engine</a>
+  <a href="monitoring.html">Monitoring &amp; Alerts</a>
+  <a href="compliance.html">Compliance Configuration</a>
+  <div class="nav-section">Reference</div>
+  <a href="troubleshooting.html">Troubleshooting</a>
+  <div class="nav-section">On This Page</div>
+  <a href="#roles">Roles &amp; Permissions</a>
+  <a href="#create-user">Creating Users</a>
+  <a href="#ldap">LDAP / Active Directory</a>
+  <a href="#sso">SSO (SAML 2.0)</a>
+  <a href="#password-policy">Password Policy</a>
+  <a href="#session">Session Management</a>
+</nav>
+
+<main class="main">
+
+  <h1>User Management</h1>
+  <p class="topic-meta">
+    <span>Applies to: PayPlus Enterprise v3.2</span>
+    <span>Last updated: March 2026</span>
+  </p>
+
+  <p>
+    PayPlus Enterprise uses a role-based access control (RBAC) model. Each user is assigned one or more roles that determine their access to payment functions, configuration screens, and reports. Users can be managed locally within PayPlus or provisioned through LDAP/Active Directory or SAML 2.0 SSO.
+  </p>
+
+  <div class="note">
+    <strong>Principle of Least Privilege</strong>
+    Always assign users the minimum role required for their job function. Operations staff processing payments do not require access to system configuration or compliance rule editing. Separate the System Administrator role from operational payment roles.
+  </div>
+
+  <h2 id="roles">Roles and Permissions</h2>
+
+  <h3>Built-In Roles</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Role</th><th>Description</th><th>Typical Job Title</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>System Administrator</strong></td>
+          <td>Full system access. Manages users, roles, connectors, compliance configuration, and system settings. Cannot initiate or approve payments (segregation of duty control).</td>
+          <td>IT System Administrator</td>
+        </tr>
+        <tr>
+          <td><strong>Payments Manager</strong></td>
+          <td>Manages payment workflows, approves payments up to defined limit, views all payment queues, accesses settlement reports. Cannot modify system configuration.</td>
+          <td>Payments Operations Manager, Treasury Manager</td>
+        </tr>
+        <tr>
+          <td><strong>Payments Processor</strong></td>
+          <td>Initiates payments within assigned limits. Views own payment queue and status. Cannot approve own payments if dual-control is configured.</td>
+          <td>Payments Analyst, Treasury Operations Staff</td>
+        </tr>
+        <tr>
+          <td><strong>Compliance Officer</strong></td>
+          <td>Manages OFAC hold queue. Reviews and releases or rejects held payments. Views compliance reports and audit logs. Cannot modify system configuration or initiate payments.</td>
+          <td>BSA/AML Compliance Officer, OFAC Analyst</td>
+        </tr>
+        <tr>
+          <td><strong>Read-Only Auditor</strong></td>
+          <td>View-only access to all payment records, audit logs, and reports. Cannot initiate, approve, or modify any payment or configuration.</td>
+          <td>Internal Auditor, External Auditor (with time-limited access), Regulator</td>
+        </tr>
+        <tr>
+          <td><strong>API Integration User</strong></td>
+          <td>Non-interactive service account for system-to-system API integration with core banking or host systems. No Web Console access. API key authentication only.</td>
+          <td>Core Banking Integration (non-human account)</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Permissions Matrix</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Function</th>
+          <th>System Admin</th>
+          <th>Payments Manager</th>
+          <th>Payments Processor</th>
+          <th>Compliance Officer</th>
+          <th>Read-Only Auditor</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Initiate payment</td><td><span class="perm-cross">✗</span></td><td><span class="perm-check">✓</span></td><td><span class="perm-check">✓</span></td><td><span class="perm-cross">✗</span></td><td><span class="perm-cross">✗</span></td></tr>
+        <tr><td>Approve payment (dual-control)</td><td><span class="perm-cross">✗</span></td><td><span class="perm-check">✓</span></td><td><span class="perm-cross">✗</span></td><td><span class="perm-cross">✗</span></td><td><span class="perm-cross">✗</span></td></tr>
+        <tr><td>View payment queue</td><td><span class="perm-cross">✗</span></td><td><span class="perm-check">✓</span></td><td>Own queue only</td><td><span class="perm-check">✓</span></td><td><span class="perm-check">✓</span></td></tr>
+        <tr><td>View payment history</td><td><span class="perm-cross">✗</span></td><td><span class="perm-check">✓</span></td><td>Own payments only</td><td><span class="perm-check">✓</span></td><td><span class="perm-check">✓</span></td></tr>
+        <tr><td>Manage OFAC hold queue</td><td><span class="perm-cross">✗</span></td><td><span class="perm-cross">✗</span></td><td><span class="perm-cross">✗</span></td><td><span class="perm-check">✓</span></td><td>View only</td></tr>
+        <tr><td>View compliance reports</td><td><span class="perm-cross">✗</span></td><td><span class="perm-check">✓</span></td><td><span class="perm-cross">✗</span></td><td><span class="perm-check">✓</span></td><td><span class="perm-check">✓</span></td></tr>
+        <tr><td>View audit logs</td><td><span class="perm-cross">✗</span></td><td><span class="perm-cross">✗</span></td><td><span class="perm-cross">✗</span></td><td><span class="perm-check">✓</span></td><td><span class="perm-check">✓</span></td></tr>
+        <tr><td>Manage users &amp; roles</td><td><span class="perm-check">✓</span></td><td><span class="perm-cross">✗</span></td><td><span class="perm-cross">✗</span></td><td><span class="perm-cross">✗</span></td><td><span class="perm-cross">✗</span></td></tr>
+        <tr><td>Configure connectors</td><td><span class="perm-check">✓</span></td><td><span class="perm-cross">✗</span></td><td><span class="perm-cross">✗</span></td><td><span class="perm-cross">✗</span></td><td><span class="perm-cross">✗</span></td></tr>
+        <tr><td>Configure compliance rules</td><td><span class="perm-check">✓</span></td><td><span class="perm-cross">✗</span></td><td><span class="perm-cross">✗</span></td><td>View only</td><td><span class="perm-cross">✗</span></td></tr>
+        <tr><td>Configure workflow rules</td><td><span class="perm-check">✓</span></td><td><span class="perm-cross">✗</span></td><td><span class="perm-cross">✗</span></td><td><span class="perm-cross">✗</span></td><td><span class="perm-cross">✗</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="create-user">Creating and Managing Users</h2>
+
+  <h3>Creating a Local User</h3>
+  <ol class="step-list">
+    <li>Log in to the PayPlus Web Console as a System Administrator. Navigate to <strong>Administration &gt; Users &gt; Add User</strong>.</li>
+    <li>Enter the user's <strong>Username</strong> (must be unique), <strong>Full Name</strong>, <strong>Email Address</strong>, and <strong>Employee ID</strong> (optional, used for audit trail).</li>
+    <li>Select the <strong>Authentication Type</strong>:
+      <ul>
+        <li><strong>Local</strong> — PayPlus manages the password. User is prompted to set a password on first login.</li>
+        <li><strong>LDAP</strong> — Password authenticated against LDAP/AD. LDAP integration must be configured first (see below).</li>
+        <li><strong>SSO</strong> — User authenticates via SAML 2.0 SSO. SSO must be configured first (see below).</li>
+      </ul>
+    </li>
+    <li>Assign one or more <strong>Roles</strong> to the user. For dual-control enforcement, do not assign both <em>Payments Processor</em> and <em>Payments Manager</em> to the same user.</li>
+    <li>If the user requires access limited to specific payment rails (e.g., ACH only), configure <strong>Rail Restrictions</strong> in the Advanced tab.</li>
+    <li>Click <strong>Save</strong>. The user account is created in <em>Pending Activation</em> status. A welcome email is sent to the user's email address with login instructions.</li>
+  </ol>
+
+  <h3>Deactivating a User</h3>
+  <p>
+    When an employee leaves the institution or changes role, deactivate their PayPlus account immediately. Deactivation prevents login but retains all payment records and audit logs associated with the user — do not delete user accounts.
+  </p>
+  <p>Navigate to <strong>Administration &gt; Users</strong>, select the user, and click <strong>Deactivate</strong>. The account status changes to <em>Inactive</em>. Any pending approvals assigned to the user are returned to the payment queue for reassignment.
+  </p>
+
+  <h2 id="ldap">LDAP / Active Directory Integration</h2>
+  <p>
+    PayPlus Enterprise integrates with corporate LDAP directories (Microsoft Active Directory, OpenLDAP) for centralized authentication. Users log in with their corporate credentials; PayPlus validates the password against the LDAP server and applies the role assignments configured in PayPlus.
+  </p>
+
+  <div class="important">
+    <strong>LDAP Does Not Sync Roles</strong>
+    LDAP integration provides authentication only — not authorization. User role assignments are always managed within PayPlus, not pulled from LDAP group memberships. This preserves the payment-specific access control model independently of general IT roles.
+  </div>
+
+  <h3>Configuring LDAP Integration</h3>
+  <p>Navigate to <strong>Administration &gt; Authentication &gt; LDAP Configuration</strong>.</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Field</th><th>Description</th><th>Example Value</th></tr></thead>
+      <tbody>
+        <tr><td>LDAP Server URL</td><td>LDAP server hostname and port. Use <code>ldaps://</code> (port 636) for TLS — required for production.</td><td><code>ldaps://ad.bank.internal:636</code></td></tr>
+        <tr><td>Base DN</td><td>Distinguished name of the LDAP subtree to search for user accounts.</td><td><code>OU=PaymentsStaff,DC=bank,DC=internal</code></td></tr>
+        <tr><td>Bind DN</td><td>Service account used by PayPlus to search the LDAP directory. Must have read access to the Base DN.</td><td><code>CN=payplus-svc,OU=ServiceAccounts,DC=bank,DC=internal</code></td></tr>
+        <tr><td>Bind Password</td><td>Password for the Bind DN service account. Stored encrypted in the PayPlus database.</td><td>(stored securely)</td></tr>
+        <tr><td>User Search Filter</td><td>LDAP filter to locate user accounts. <code>{0}</code> is replaced by the username entered at login.</td><td><code>(&amp;(objectClass=user)(sAMAccountName={0}))</code></td></tr>
+        <tr><td>Connection Timeout</td><td>Seconds to wait for LDAP server response before failing. Do not set above 5 seconds to avoid login delays.</td><td><code>3</code></td></tr>
+        <tr><td>Failover LDAP Server</td><td>Secondary LDAP server URL used if the primary server is unreachable.</td><td><code>ldaps://ad-dr.bank.internal:636</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>After saving the configuration, click <strong>Test Connection</strong> to verify PayPlus can reach the LDAP server and authenticate with the Bind DN credentials.</p>
+
+  <h2 id="sso">Single Sign-On (SAML 2.0)</h2>
+  <p>
+    PayPlus Enterprise supports SAML 2.0 SP-initiated SSO. Users are redirected to your institution's Identity Provider (IdP) — such as Microsoft ADFS, Okta, or Ping Identity — for authentication, then returned to PayPlus with a SAML assertion.
+  </p>
+
+  <h3>SSO Configuration</h3>
+  <p>Navigate to <strong>Administration &gt; Authentication &gt; SSO Configuration</strong>.</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Field</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>IdP Metadata URL</td><td>URL to your IdP's SAML metadata XML. PayPlus fetches this to obtain the IdP's SSO endpoint and signing certificate.</td></tr>
+        <tr><td>SP Entity ID</td><td>PayPlus Service Provider entity ID. Provide this value to your IdP administrator when registering PayPlus as a trusted SP. Default: <code>https://payplus.bank.internal/saml/metadata</code></td></tr>
+        <tr><td>Assertion Consumer Service URL</td><td>PayPlus URL that receives the SAML response from the IdP. Provide to IdP admin. Default: <code>https://payplus.bank.internal/saml/acs</code></td></tr>
+        <tr><td>Username Attribute</td><td>SAML attribute that contains the username to match against PayPlus user accounts. Typically <code>sAMAccountName</code> or <code>email</code>.</td></tr>
+        <tr><td>Session Timeout</td><td>Maximum SSO session duration in minutes. After this period, the user is redirected to the IdP for re-authentication.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="tip">
+    <strong>Testing SSO Before Go-Live</strong>
+    Configure a test user with SSO authentication type in a UAT environment before enabling SSO in production. Verify the SAML assertion contains the correct username attribute. Keep at least one local System Administrator account active as a break-glass account in case SSO is unavailable.
+  </div>
+
+  <h2 id="password-policy">Password Policy</h2>
+  <p>
+    Password policy applies to local authentication accounts. LDAP and SSO accounts use the password policy enforced by the external authentication system.
+  </p>
+  <p>Navigate to <strong>Administration &gt; Security &gt; Password Policy</strong> to configure the following settings:</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Setting</th><th>Default</th><th>Recommended (Production)</th></tr></thead>
+      <tbody>
+        <tr><td>Minimum password length</td><td>10 characters</td><td>14 characters</td></tr>
+        <tr><td>Complexity requirements</td><td>Uppercase, lowercase, number, special character</td><td>Same — do not reduce</td></tr>
+        <tr><td>Password expiration</td><td>90 days</td><td>90 days (align with corporate policy)</td></tr>
+        <tr><td>Password history</td><td>Last 5 passwords</td><td>Last 12 passwords</td></tr>
+        <tr><td>Account lockout threshold</td><td>5 failed attempts</td><td>5 failed attempts</td></tr>
+        <tr><td>Lockout duration</td><td>30 minutes</td><td>30 minutes (or until manually unlocked)</td></tr>
+        <tr><td>Force password change on first login</td><td>Enabled</td><td>Enabled — do not disable</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="session">Session Management</h2>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Setting</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>Session timeout (idle)</td><td>15 minutes</td><td>After this period of inactivity, the user session is terminated and the user must log in again.</td></tr>
+        <tr><td>Maximum concurrent sessions</td><td>1</td><td>Prevents a user account from being simultaneously logged in from multiple workstations. Do not increase above 2 for operational roles.</td></tr>
+        <tr><td>Session token expiration</td><td>8 hours</td><td>Maximum duration of an active session regardless of activity. Forces re-authentication at the start of each business day.</td></tr>
+        <tr><td>Secure cookie (HTTPS only)</td><td>Enabled</td><td>Session cookies are not transmitted over HTTP. Do not disable.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="doc-nav">
+    <a href="installation.html">← Installation</a>
+    <a href="payment-rails.html">Next: Payment Rail Connectors →</a>
+  </div>
+
+</main>
+
+<footer class="site-footer">
+  <span>PayPlus Enterprise · User Management · v3.2 · March 2026</span>
+  <span>Internal Use Only — Confidential</span>
+</footer>
+
+</body>
+</html>

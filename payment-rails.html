@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Payment Rail Connectors — PayPlus Enterprise Administration Guide</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <a class="header-brand" href="index.html">PayPlus Enterprise <span>· Administration Guide</span></a>
+  <div class="header-breadcrumb"><a href="index.html">Home</a> › Payment Rail Connectors</div>
+  <span class="header-rail-badge">v3.2</span>
+</header>
+
+<nav class="sidebar">
+  <div class="nav-section">Overview</div>
+  <a href="index.html">Introduction</a>
+  <a href="index.html#architecture">Architecture</a>
+  <div class="nav-section">Administration</div>
+  <a href="installation.html">Installation</a>
+  <a href="user-management.html">User Management</a>
+  <div class="nav-section">Payment Configuration</div>
+  <a href="payment-rails.html" class="active">Payment Rail Connectors</a>
+  <div class="nav-section">Operations</div>
+  <a href="workflow.html">Workflow Engine</a>
+  <a href="monitoring.html">Monitoring &amp; Alerts</a>
+  <a href="compliance.html">Compliance Configuration</a>
+  <div class="nav-section">Reference</div>
+  <a href="troubleshooting.html">Troubleshooting</a>
+  <div class="nav-section">On This Page</div>
+  <a href="#overview">Overview</a>
+  <a href="#ach">ACH Connector</a>
+  <a href="#fedwire">Fedwire Connector</a>
+  <a href="#swift">SWIFT Connector</a>
+  <a href="#rtp">RTP Connector</a>
+  <a href="#fednow">FedNow Connector</a>
+  <a href="#testing">Connectivity Testing</a>
+</nav>
+
+<main class="main">
+
+  <h1>Payment Rail Connectors</h1>
+  <p class="topic-meta">
+    <span>Applies to: PayPlus Enterprise v3.2</span>
+    <span>Last updated: March 2026</span>
+  </p>
+
+  <h2 id="overview">Overview</h2>
+  <p>
+    Each payment rail is managed by a dedicated connector module that handles network connectivity, message format translation, and session management for that rail. Connectors are configured independently and can be enabled or disabled without affecting other rails.
+  </p>
+  <p>
+    Navigate to <strong>Administration &gt; Connectors</strong> to access connector configuration. Each connector has three tabs: <em>Connection Settings</em>, <em>Processing Settings</em>, and <em>Status &amp; Logs</em>.
+  </p>
+
+  <div class="warning">
+    <strong>Save Before Enabling</strong>
+    Always save connector configuration changes before enabling the connector. Enabling a connector before saving will use the previously saved configuration, which may cause connectivity failures or incorrect processing parameters.
+  </div>
+
+  <h2 id="ach">ACH Connector</h2>
+  <p>
+    The ACH Connector handles NACHA-formatted ACH file submission and return file processing via the Federal Reserve's FedACH system or the Electronic Payments Network (EPN). The connector manages file creation, transmission scheduling, and inbound return and NOC file processing.
+  </p>
+
+  <h3>Connection Settings</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Parameter</th><th>Description</th><th>Example</th></tr></thead>
+      <tbody>
+        <tr><td><code>ach.odfi.routing.number</code></td><td>Your institution's ODFI routing transit number. Used as the originating ABA in the NACHA file header.</td><td><code>021000021</code></td></tr>
+        <tr><td><code>ach.odfi.name</code></td><td>ODFI name as it appears in NACHA file records. Maximum 23 characters.</td><td><code>FIRST NATIONAL BANK</code></td></tr>
+        <tr><td><code>ach.network</code></td><td>Target ACH operator network: <code>FEDACH</code> or <code>EPN</code>.</td><td><code>FEDACH</code></td></tr>
+        <tr><td><code>ach.transport.type</code></td><td>File transport protocol: <code>SFTP</code> or <code>FedLine</code>. FedLine is preferred for production; SFTP for test environments.</td><td><code>FedLine</code></td></tr>
+        <tr><td><code>ach.sftp.host</code></td><td>SFTP server hostname (used if transport.type = SFTP).</td><td><code>ach-prod.fedreserve.gov</code></td></tr>
+        <tr><td><code>ach.sftp.port</code></td><td>SFTP port. Default: 22.</td><td><code>22</code></td></tr>
+        <tr><td><code>ach.sftp.user</code></td><td>SFTP username for authentication.</td><td><code>fnb-ach-user</code></td></tr>
+        <tr><td><code>ach.sftp.key.path</code></td><td>Path to the SSH private key file for SFTP authentication. Key must be in OpenSSH or PEM format.</td><td><code>/opt/payplus/config/keys/ach-sftp.key</code></td></tr>
+        <tr><td><code>ach.outbound.directory</code></td><td>Local directory where PayPlus writes ACH output files before transmission.</td><td><code>/opt/payplus/ach/outbound/</code></td></tr>
+        <tr><td><code>ach.inbound.directory</code></td><td>Local directory where inbound return and NOC files are received.</td><td><code>/opt/payplus/ach/inbound/</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Processing Settings</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Parameter</th><th>Description</th><th>Default</th></tr></thead>
+      <tbody>
+        <tr><td><code>ach.processing.windows</code></td><td>Enabled processing windows: <code>STANDARD</code>, <code>SDA1</code>, <code>SDA2</code>, <code>SDA3</code>. Separate multiple values with comma.</td><td><code>STANDARD,SDA1,SDA2,SDA3</code></td></tr>
+        <tr><td><code>ach.sda.cutoff.window1</code></td><td>Cut-off time for Same-Day ACH Window 1 submission (local time). FedACH window 1 cut-off is 10:30 AM ET.</td><td><code>10:15</code></td></tr>
+        <tr><td><code>ach.sda.cutoff.window2</code></td><td>Cut-off time for Same-Day ACH Window 2 (local time). FedACH cut-off is 2:45 PM ET.</td><td><code>14:30</code></td></tr>
+        <tr><td><code>ach.sda.cutoff.window3</code></td><td>Cut-off time for Same-Day ACH Window 3 (local time). FedACH cut-off is 4:45 PM ET.</td><td><code>16:30</code></td></tr>
+        <tr><td><code>ach.file.blocking.factor</code></td><td>Number of records in each NACHA file block. Per NACHA specification: must be 10.</td><td><code>10</code></td></tr>
+        <tr><td><code>ach.return.processing.auto</code></td><td>If <code>true</code>, PayPlus automatically posts returned items to the originating account. If <code>false</code>, returns require manual operations review.</td><td><code>false</code></td></tr>
+        <tr><td><code>ach.noc.auto.update</code></td><td>If <code>true</code>, Notifications of Change (NOC/COR) automatically update the stored beneficiary account details. Requires compliance review if enabled.</td><td><code>false</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="fedwire">Fedwire Connector</h2>
+  <p>
+    The Fedwire Connector submits and receives ISO 20022 pacs.008 / pacs.009 messages via the FedLine Advantage connection. Following the Federal Reserve's ISO 20022 migration (March 10, 2025), all Fedwire messages use ISO 20022 format. Legacy Fedwire format is no longer supported.
+  </p>
+
+  <div class="important">
+    <strong>ISO 20022 Only — Legacy Format Retired</strong>
+    PayPlus Enterprise v3.2 supports ISO 20022 Fedwire format only. If you are upgrading from v3.0 or earlier (which supported the legacy Fedwire format), ensure all Fedwire message templates and routing rules have been updated to ISO 20022 before enabling the Fedwire Connector in production.
+  </div>
+
+  <h3>Connection Settings</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Parameter</th><th>Description</th><th>Example</th></tr></thead>
+      <tbody>
+        <tr><td><code>fedwire.aba</code></td><td>Your institution's ABA routing number used as the originating bank identifier in Fedwire messages.</td><td><code>021000021</code></td></tr>
+        <tr><td><code>fedwire.institution.name</code></td><td>Institution name as registered with the Federal Reserve for Fedwire participation.</td><td><code>FIRST NATIONAL BANK NA</code></td></tr>
+        <tr><td><code>fedwire.fedline.host</code></td><td>FedLine Advantage host address. Provided by your Federal Reserve Bank district. Not a public internet address.</td><td><code>fedline-prod.frb.gov</code></td></tr>
+        <tr><td><code>fedwire.fedline.port</code></td><td>FedLine Advantage port for Fedwire message submission.</td><td><code>9350</code></td></tr>
+        <tr><td><code>fedwire.fedline.certificate</code></td><td>Path to the FedLine digital certificate used for mutual TLS authentication. Issued by the Federal Reserve Bank.</td><td><code>/opt/payplus/config/certs/fedline.p12</code></td></tr>
+        <tr><td><code>fedwire.operating.start</code></td><td>Fedwire operating start time (ET). Fedwire opens at 9:00 PM ET (prior business day).</td><td><code>21:00</code></td></tr>
+        <tr><td><code>fedwire.operating.end</code></td><td>Fedwire last customer transfer deadline (ET). Customer wire cut-off is 6:00 PM ET.</td><td><code>18:00</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>ISO 20022 Message Configuration</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Parameter</th><th>Description</th><th>Default</th></tr></thead>
+      <tbody>
+        <tr><td><code>fedwire.message.type.customer</code></td><td>Message type for customer-to-bank credit transfers.</td><td><code>pacs.008</code></td></tr>
+        <tr><td><code>fedwire.message.type.bank</code></td><td>Message type for bank-to-bank credit transfers (cover payments, treasury).</td><td><code>pacs.009</code></td></tr>
+        <tr><td><code>fedwire.uetr.auto.generate</code></td><td>If <code>true</code>, PayPlus automatically generates a UUID-based UETR for each Fedwire payment. Required for ISO 20022 compliance.</td><td><code>true</code></td></tr>
+        <tr><td><code>fedwire.lei.enabled</code></td><td>If <code>true</code>, the institution's LEI (Legal Entity Identifier) is included in outgoing Fedwire messages. Required for large financial institutions.</td><td><code>true</code></td></tr>
+        <tr><td><code>fedwire.lei.value</code></td><td>Your institution's 20-character LEI code. Obtain from GLEIF if not yet registered.</td><td><code>5493001KJTIIGC8Y1R12</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="swift">SWIFT Connector</h2>
+  <p>
+    The SWIFT Connector sends and receives SWIFT messages via SWIFTNet Alliance Access (SAA) — the SWIFT-certified messaging interface deployed on-premises at your institution. PayPlus supports both MT (legacy) messages and ISO 20022 MX messages for the SWIFT migration period.
+  </p>
+
+  <h3>Connection Settings</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Parameter</th><th>Description</th><th>Example</th></tr></thead>
+      <tbody>
+        <tr><td><code>swift.bic</code></td><td>Your institution's 8 or 11-character BIC (Bank Identifier Code). Used as the sender BIC in all outgoing SWIFT messages.</td><td><code>FNBKUS33XXX</code></td></tr>
+        <tr><td><code>swift.saa.host</code></td><td>Hostname or IP of the SWIFTNet Alliance Access server on your internal network.</td><td><code>saa01.bank.internal</code></td></tr>
+        <tr><td><code>swift.saa.port</code></td><td>SAA MQ or WebSphere MQ listener port for PayPlus message submission.</td><td><code>1414</code></td></tr>
+        <tr><td><code>swift.saa.queue.out</code></td><td>MQ queue name for outbound SWIFT messages sent from PayPlus to SAA.</td><td><code>PAYPLUS.TO.SAA</code></td></tr>
+        <tr><td><code>swift.saa.queue.in</code></td><td>MQ queue name for inbound SWIFT messages delivered from SAA to PayPlus.</td><td><code>SAA.TO.PAYPLUS</code></td></tr>
+        <tr><td><code>swift.correspondent.default</code></td><td>Default correspondent bank BIC for USD settlement if no specific routing rule applies.</td><td><code>CHASUS33XXX</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Message Type Configuration</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Message Type</th><th>Purpose</th><th>Format Support</th></tr></thead>
+      <tbody>
+        <tr><td>MT 103 / pacs.008</td><td>Customer credit transfer (single)</td><td><span class="badge badge-green">MT + MX</span></td></tr>
+        <tr><td>MT 202 / pacs.009</td><td>Financial institution credit transfer (cover)</td><td><span class="badge badge-green">MT + MX</span></td></tr>
+        <tr><td>MT 202 COV</td><td>Cover payment for MT 103</td><td><span class="badge badge-green">MT</span></td></tr>
+        <tr><td>camt.056</td><td>Payment cancellation request (recall)</td><td><span class="badge badge-green">MX only</span></td></tr>
+        <tr><td>camt.029</td><td>Resolution of investigation (recall response)</td><td><span class="badge badge-green">MX only</span></td></tr>
+        <tr><td>MT 940 / camt.053</td><td>Customer statement (nostro reconciliation)</td><td><span class="badge badge-green">MT + MX</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="rtp">RTP Connector</h2>
+  <p>
+    The RTP Connector connects to The Clearing House (TCH) RTP network for real-time credit transfer initiation and receipt. RTP operates 24/7/365 and uses ISO 20022 pacs.008 messages. The connector maintains a persistent connection to the TCH network.
+  </p>
+
+  <h3>Connection Settings</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Parameter</th><th>Description</th><th>Example</th></tr></thead>
+      <tbody>
+        <tr><td><code>rtp.routing.number</code></td><td>Your institution's ABA routing number as registered with TCH for RTP participation.</td><td><code>021000021</code></td></tr>
+        <tr><td><code>rtp.tch.host</code></td><td>TCH RTP production host address. Provided by TCH after certification. Not publicly documented.</td><td>(TCH-provided)</td></tr>
+        <tr><td><code>rtp.tch.port</code></td><td>TCH RTP production port.</td><td>(TCH-provided)</td></tr>
+        <tr><td><code>rtp.tch.certificate</code></td><td>Path to the mutual TLS certificate issued by TCH for your institution's RTP connection.</td><td><code>/opt/payplus/config/certs/tch-rtp.p12</code></td></tr>
+        <tr><td><code>rtp.settlement.account</code></td><td>Your institution's prefunded settlement account identifier at the Federal Reserve Bank of New York used for TCH RTP settlement.</td><td><code>FRB-NY-RTP-00021</code></td></tr>
+        <tr><td><code>rtp.max.transaction.amount</code></td><td>Maximum transaction amount permitted by PayPlus for RTP payments. Cannot exceed the TCH network limit of $1,000,000. Set lower for retail use cases.</td><td><code>100000</code></td></tr>
+        <tr><td><code>rtp.response.timeout.seconds</code></td><td>Maximum seconds to wait for Receiving Bank acceptance or return response before treating the payment as timed out.</td><td><code>20</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="warning">
+    <strong>Prefunded Balance Monitoring</strong>
+    RTP settlement requires a positive prefunded balance in the TCH joint settlement account. Configure the RTP Balance Alert (Administration &gt; Monitoring &gt; Alerts) to notify operations when the prefunded balance falls below a defined threshold. Insufficient balance causes RTP payment rejections.
+  </div>
+
+  <h2 id="fednow">FedNow Connector</h2>
+  <p>
+    The FedNow Connector connects to the Federal Reserve's FedNow instant payment service via the FedLine network. Like Fedwire, FedNow uses FedLine for connectivity and ISO 20022 natively. FedNow operates 24/7/365.
+  </p>
+
+  <h3>Connection Settings</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Parameter</th><th>Description</th><th>Example</th></tr></thead>
+      <tbody>
+        <tr><td><code>fednow.routing.number</code></td><td>Your institution's ABA routing number as registered with the Federal Reserve for FedNow participation.</td><td><code>021000021</code></td></tr>
+        <tr><td><code>fednow.participation.type</code></td><td><code>SEND_RECEIVE</code> — full participation (can originate and receive). <code>RECEIVE_ONLY</code> — can only receive FedNow credits.</td><td><code>SEND_RECEIVE</code></td></tr>
+        <tr><td><code>fednow.fedline.host</code></td><td>FedLine network host for FedNow. Uses the same FedLine infrastructure as Fedwire but a different service endpoint.</td><td>(Federal Reserve Bank-provided)</td></tr>
+        <tr><td><code>fednow.fedline.certificate</code></td><td>FedLine digital certificate for FedNow. May be the same certificate as Fedwire or a separate certificate depending on your FedLine provisioning.</td><td><code>/opt/payplus/config/certs/fedline-fednow.p12</code></td></tr>
+        <tr><td><code>fednow.max.transaction.amount</code></td><td>Per-transaction limit. Default FedNow network cap is $500,000. Elevated limit up to $1,000,000 requires Federal Reserve approval.</td><td><code>500000</code></td></tr>
+        <tr><td><code>fednow.lmt.threshold</code></td><td>Liquidity Management Transfer threshold. When your FedNow balance drops below this amount, PayPlus triggers an LMT from your Fed master account.</td><td><code>10000000</code></td></tr>
+        <tr><td><code>fednow.lmt.transfer.amount</code></td><td>Amount transferred from Fed master account to FedNow balance when LMT is triggered.</td><td><code>50000000</code></td></tr>
+        <tr><td><code>fednow.response.timeout.seconds</code></td><td>Maximum seconds to wait for Receiving Bank response. FedNow SLA is under 20 seconds end-to-end.</td><td><code>15</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="testing">Connectivity Testing</h2>
+  <p>After configuring each connector, test connectivity before enabling payment processing:</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Connector</th><th>Test Function</th><th>Expected Result</th></tr></thead>
+      <tbody>
+        <tr><td>ACH</td><td>Administration &gt; Connectors &gt; ACH &gt; Test Connection</td><td>SFTP login succeeds; inbound/outbound directories accessible; test file transmission successful</td></tr>
+        <tr><td>Fedwire</td><td>Administration &gt; Connectors &gt; Fedwire &gt; Test Connection</td><td>FedLine mutual TLS handshake successful; Fedwire session established; test inquiry returns valid response</td></tr>
+        <tr><td>SWIFT</td><td>Administration &gt; Connectors &gt; SWIFT &gt; Test Connection</td><td>MQ connection to SAA established; test message delivered to outbound queue; SAA ACK received</td></tr>
+        <tr><td>RTP</td><td>Administration &gt; Connectors &gt; RTP &gt; Test Connection</td><td>TLS connection to TCH test environment established; ping message returns acknowledgement within 5 seconds</td></tr>
+        <tr><td>FedNow</td><td>Administration &gt; Connectors &gt; FedNow &gt; Test Connection</td><td>FedLine connection established; FedNow service reachable; status inquiry returns service availability confirmation</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="doc-nav">
+    <a href="user-management.html">← User Management</a>
+    <a href="workflow.html">Next: Workflow Engine →</a>
+  </div>
+
+</main>
+
+<footer class="site-footer">
+  <span>PayPlus Enterprise · Payment Rail Connectors · v3.2 · March 2026</span>
+  <span>Internal Use Only — Confidential</span>
+</footer>
+
+</body>
+</html>

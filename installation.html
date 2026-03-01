@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Installation — PayPlus Enterprise Administration Guide</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <a class="header-brand" href="index.html">PayPlus Enterprise <span>· Administration Guide</span></a>
+  <div class="header-breadcrumb"><a href="index.html">Home</a> › Installation</div>
+  <span class="header-rail-badge">v3.2</span>
+</header>
+
+<nav class="sidebar">
+  <div class="nav-section">Overview</div>
+  <a href="index.html">Introduction</a>
+  <a href="index.html#architecture">Architecture</a>
+  <a href="index.html#deployment">Deployment Models</a>
+  <div class="nav-section">Administration</div>
+  <a href="installation.html" class="active">Installation</a>
+  <a href="user-management.html">User Management</a>
+  <div class="nav-section">Payment Configuration</div>
+  <a href="payment-rails.html">Payment Rail Connectors</a>
+  <div class="nav-section">Operations</div>
+  <a href="workflow.html">Workflow Engine</a>
+  <a href="monitoring.html">Monitoring &amp; Alerts</a>
+  <a href="compliance.html">Compliance Configuration</a>
+  <div class="nav-section">Reference</div>
+  <a href="troubleshooting.html">Troubleshooting</a>
+  <div class="nav-section">On This Page</div>
+  <a href="#prerequisites">Prerequisites</a>
+  <a href="#system-requirements">System Requirements</a>
+  <a href="#install-procedure">Installation Procedure</a>
+  <a href="#database-setup">Database Setup</a>
+  <a href="#appserver-config">Application Server</a>
+  <a href="#post-install">Post-Installation</a>
+  <a href="#upgrade">Upgrading</a>
+</nav>
+
+<main class="main">
+
+  <h1>Installation</h1>
+  <p class="topic-meta">
+    <span>Applies to: PayPlus Enterprise v3.2</span>
+    <span>Last updated: March 2026</span>
+  </p>
+
+  <div class="important">
+    <strong>Before You Begin</strong>
+    Installation must be performed by a qualified system administrator with DBA access to the target database server. Do not install PayPlus Enterprise on a server running other financial applications. Review the full prerequisites checklist before starting the installation.
+  </div>
+
+  <h2 id="prerequisites">Pre-Installation Checklist</h2>
+  <p>Complete all items in this checklist before beginning installation. Installation will fail if prerequisites are not met.</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>#</th><th>Requirement</th><th>Verification</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>Target server meets hardware requirements (see below)</td><td>Run <code>systeminfo</code> (Windows) or <code>lshw</code> (Linux) and compare against specifications</td></tr>
+        <tr><td>2</td><td>Supported operating system installed and fully patched</td><td>OS version verified; current security patches applied</td></tr>
+        <tr><td>3</td><td>Java SE 17 (LTS) installed and <code>JAVA_HOME</code> set</td><td><code>java -version</code> returns 17.x.x</td></tr>
+        <tr><td>4</td><td>Supported application server installed (WebSphere 9.x or JBoss EAP 7.4)</td><td>Application server starts successfully</td></tr>
+        <tr><td>5</td><td>Oracle 19c or SQL Server 2019 database provisioned</td><td>DBA confirms database instance created; admin credentials available</td></tr>
+        <tr><td>6</td><td>PayPlus database schema user created with required privileges</td><td>DBA confirms <code>ppuser</code> account with CREATE TABLE, CREATE SEQUENCE, CREATE INDEX, INSERT, UPDATE, DELETE, SELECT on PayPlus schema</td></tr>
+        <tr><td>7</td><td>Ports 8443 (HTTPS), 8080 (HTTP redirect), 9080 (admin) open in firewall</td><td>Network team confirms port access from client workstations and integration hosts</td></tr>
+        <tr><td>8</td><td>PayPlus license file (<code>payplus.lic</code>) obtained from vendor</td><td>License file received; validity period covers production go-live date</td></tr>
+        <tr><td>9</td><td>Installation media (<code>payplus-enterprise-3.2.0.zip</code>) downloaded and checksum verified</td><td>SHA-256 checksum matches value in release notes</td></tr>
+        <tr><td>10</td><td>Outbound connectivity to payment networks confirmed (or deferred to connector configuration)</td><td>Network team confirms outbound routes to FedLine, SWIFTNet, TCH RTP, or test endpoints as applicable</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="system-requirements">System Requirements</h2>
+
+  <h3>Hardware Requirements</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Component</th><th>Minimum</th><th>Recommended (Production)</th></tr></thead>
+      <tbody>
+        <tr><td>CPU</td><td>4 cores, 2.5 GHz</td><td>8 cores, 3.0 GHz (Intel Xeon or equivalent)</td></tr>
+        <tr><td>RAM</td><td>16 GB</td><td>32 GB (64 GB for high-volume institutions)</td></tr>
+        <tr><td>Application disk</td><td>100 GB SSD</td><td>250 GB SSD, RAID 10</td></tr>
+        <tr><td>Log / archive disk</td><td>500 GB</td><td>2 TB (separate volume from application disk)</td></tr>
+        <tr><td>Network</td><td>1 Gbps NIC</td><td>Dual 10 Gbps NIC with failover bonding</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Software Requirements</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Component</th><th>Supported Versions</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>Operating System</td><td>Red Hat Enterprise Linux 8.x / 9.x<br>Windows Server 2019 / 2022</td><td>RHEL preferred for production. Windows Server supported for lab and UAT environments.</td></tr>
+        <tr><td>Java</td><td>Java SE 17 LTS (OpenJDK or Oracle JDK)</td><td>Java 11 supported for v3.1 only. Java 21 not yet certified.</td></tr>
+        <tr><td>Application Server</td><td>IBM WebSphere Application Server 9.0.x<br>JBoss EAP 7.4.x</td><td>WebSphere required for IBM MQ integration. JBoss supported for all other configurations.</td></tr>
+        <tr><td>Database</td><td>Oracle Database 19c (19.x)<br>Microsoft SQL Server 2019 / 2022</td><td>Oracle RAC supported for high-availability deployments.</td></tr>
+        <tr><td>JDBC Driver</td><td>Oracle: ojdbc11.jar<br>SQL Server: mssql-jdbc-12.x.jar</td><td>Drivers must be copied to the application server's <code>lib</code> directory before deployment.</td></tr>
+        <tr><td>Browser (Web Console)</td><td>Chrome 120+, Firefox 120+, Edge 120+</td><td>Internet Explorer not supported.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="install-procedure">Installation Procedure</h2>
+
+  <div class="note">
+    <strong>Note</strong>
+    Run all installation commands as a dedicated service account (e.g., <code>ppinstall</code>), not as root or a domain administrator. The service account must have read/write access to the installation target directory.
+  </div>
+
+  <ol class="step-list">
+    <li>
+      <strong>Extract the installation archive.</strong><br>
+      Extract <code>payplus-enterprise-3.2.0.zip</code> to the installation staging directory. The archive contains: <code>payplus.ear</code> (application archive), <code>install/</code> (installation scripts), <code>config/</code> (configuration templates), <code>sql/</code> (database scripts), and <code>docs/</code> (release notes).
+      <pre>unzip payplus-enterprise-3.2.0.zip -d /opt/payplus-install</pre>
+    </li>
+    <li>
+      <strong>Copy the license file.</strong><br>
+      Copy <code>payplus.lic</code> to <code>config/license/payplus.lic</code> within the extracted archive. The installation script validates the license before proceeding.
+    </li>
+    <li>
+      <strong>Configure the installation properties file.</strong><br>
+      Edit <code>install/payplus-install.properties</code> and set the following required values:
+      <pre>install.dir=/opt/payplus
+appserver.type=jboss
+appserver.home=/opt/jboss-eap-7.4
+db.type=oracle
+db.host=dbserver01.bank.internal
+db.port=1521
+db.name=PPDB
+db.user=ppuser
+db.password=CHANGEME
+payplus.admin.user=ppAdmin
+payplus.admin.password=CHANGEME</pre>
+      Change all <code>CHANGEME</code> values to secure values complying with your institution's password policy.
+    </li>
+    <li>
+      <strong>Run the database schema installation script.</strong><br>
+      <pre>cd /opt/payplus-install/install
+./install-db.sh --config payplus-install.properties</pre>
+      The script creates all required tables, sequences, indexes, and initial reference data. Verify the output for any ORA- or SQL Server errors before proceeding.
+    </li>
+    <li>
+      <strong>Run the application installation script.</strong><br>
+      <pre>./install-app.sh --config payplus-install.properties</pre>
+      The script deploys <code>payplus.ear</code> to the application server, configures data sources, sets environment variables, and creates the PayPlus service.
+    </li>
+    <li>
+      <strong>Start the PayPlus service.</strong><br>
+      <pre>systemctl start payplus   # Linux (systemd)
+# or, on Windows:
+net start "PayPlus Enterprise"</pre>
+      Wait approximately 60–90 seconds for the application to fully initialize.
+    </li>
+    <li>
+      <strong>Verify the installation.</strong><br>
+      Open a browser and navigate to <code>https://&lt;server&gt;:8443/payplus</code>. The PayPlus login page should appear. Log in with the <code>ppAdmin</code> credentials configured in step 3. The system dashboard should display with all services showing <span class="badge badge-green">Online</span> status.
+    </li>
+  </ol>
+
+  <h2 id="database-setup">Database Setup</h2>
+
+  <h3>Oracle Database</h3>
+  <p>Before running the installation script, create the PayPlus database user with the following grants:</p>
+  <pre>-- Run as DBA
+CREATE USER ppuser IDENTIFIED BY "SecurePassword123!";
+GRANT CONNECT, RESOURCE TO ppuser;
+GRANT CREATE TABLE, CREATE SEQUENCE, CREATE INDEX TO ppuser;
+GRANT UNLIMITED TABLESPACE TO ppuser;
+ALTER USER ppuser DEFAULT TABLESPACE payplus_data TEMPORARY TABLESPACE temp;</pre>
+
+  <h3>SQL Server</h3>
+  <pre>-- Run as sa or sysadmin
+CREATE DATABASE payplus_db;
+CREATE LOGIN ppuser WITH PASSWORD = 'SecurePassword123!';
+USE payplus_db;
+CREATE USER ppuser FOR LOGIN ppuser;
+ALTER ROLE db_owner ADD MEMBER ppuser;</pre>
+
+  <div class="warning">
+    <strong>Production Hardening</strong>
+    Do not grant <code>db_owner</code> in production. After the initial schema installation completes, reduce the PayPlus database user to minimum required privileges: SELECT, INSERT, UPDATE, DELETE, and EXECUTE on PayPlus schema objects only. Contact your PayPlus DBA support representative for the post-install privilege reduction script.
+  </div>
+
+  <h2 id="appserver-config">Application Server Configuration</h2>
+
+  <h3>JVM Heap Settings</h3>
+  <p>The default JVM heap settings are suitable for test environments. Adjust for production based on expected payment volume:</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Environment</th><th>-Xms (Initial Heap)</th><th>-Xmx (Max Heap)</th></tr></thead>
+      <tbody>
+        <tr><td>Development / UAT</td><td>2g</td><td>4g</td></tr>
+        <tr><td>Production — Standard</td><td>4g</td><td>8g</td></tr>
+        <tr><td>Production — High Volume</td><td>8g</td><td>16g</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Set heap values in <code>$PAYPLUS_HOME/bin/payplus-env.sh</code> (Linux) or <code>payplus-env.bat</code> (Windows):</p>
+  <pre>JAVA_OPTS="-Xms4g -Xmx8g -XX:+UseG1GC -XX:MaxGCPauseMillis=200"</pre>
+
+  <h3>HTTPS / TLS Configuration</h3>
+  <p>PayPlus Web Console requires HTTPS. Configure a TLS certificate from your institution's PKI or a trusted CA before go-live. Self-signed certificates are acceptable for lab environments only.</p>
+  <ol>
+    <li>Obtain a certificate in PKCS#12 format (<code>.p12</code>) from your institution's PKI team.</li>
+    <li>Import the certificate into the PayPlus keystore: <code>$PAYPLUS_HOME/config/security/payplus.keystore</code></li>
+    <li>Update <code>payplus.properties</code>: set <code>ssl.keystore.path</code>, <code>ssl.keystore.password</code>, and <code>ssl.certificate.alias</code>.</li>
+    <li>Restart the PayPlus service.</li>
+  </ol>
+
+  <h2 id="post-install">Post-Installation Validation</h2>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Check</th><th>Expected Result</th><th>Verification Method</th></tr></thead>
+      <tbody>
+        <tr><td>Web Console login</td><td>Login page loads; admin login succeeds</td><td>Browser: <code>https://server:8443/payplus</code></td></tr>
+        <tr><td>Database connectivity</td><td><span class="badge badge-green">Connected</span> shown in System &gt; Health</td><td>Admin Console → System → Health Monitor</td></tr>
+        <tr><td>License validity</td><td>License status shows <span class="badge badge-green">Valid</span> with expiry date</td><td>Admin Console → System → License</td></tr>
+        <tr><td>All connectors initialized</td><td>Connector status shows <span class="badge badge-yellow">Standby</span> (not yet configured)</td><td>Admin Console → Connectors → Status</td></tr>
+        <tr><td>Audit log active</td><td>Admin login event visible in audit log</td><td>Admin Console → Audit → Recent Events</td></tr>
+        <tr><td>OFAC screening module</td><td>Screening engine shows <span class="badge badge-green">Online</span></td><td>Admin Console → Compliance → Screening Status</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="upgrade">Upgrading from a Previous Version</h2>
+
+  <div class="warning">
+    <strong>Upgrade Requires Maintenance Window</strong>
+    Upgrading PayPlus Enterprise requires a planned maintenance window. All active payment processing must be quiesced before the upgrade begins. Coordinate with operations and payments management to schedule the upgrade window during a low-volume period.
+  </div>
+
+  <ol class="step-list">
+    <li><strong>Back up the database.</strong> Take a full database backup immediately before the upgrade. Verify the backup is restorable before proceeding.</li>
+    <li><strong>Back up the configuration directory.</strong> Archive <code>$PAYPLUS_HOME/config/</code> to a safe location. This preserves all connector settings, compliance rules, and workflow definitions.</li>
+    <li><strong>Stop the PayPlus service.</strong> Confirm all in-flight payments have been processed or safely suspended. Check the payment queue for any pending items.</li>
+    <li><strong>Run the upgrade script.</strong> Extract the new version archive and run <code>upgrade.sh --from 3.1 --config payplus-install.properties</code>. The upgrade script applies database schema migrations and redeploys the application.</li>
+    <li><strong>Verify database migrations.</strong> Review <code>upgrade.log</code> in the installation staging directory. All migrations must complete with status <code>SUCCESS</code>.</li>
+    <li><strong>Start the PayPlus service</strong> and complete the post-installation validation checklist above.</li>
+  </ol>
+
+  <div class="doc-nav">
+    <a href="index.html">← Introduction</a>
+    <a href="user-management.html">Next: User Management →</a>
+  </div>
+
+</main>
+
+<footer class="site-footer">
+  <span>PayPlus Enterprise · Installation · v3.2 · March 2026</span>
+  <span>Internal Use Only — Confidential</span>
+</footer>
+
+</body>
+</html>

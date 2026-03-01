@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PayPlus Enterprise — Administration Guide</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <a class="header-brand" href="index.html">PayPlus Enterprise <span>· Administration Guide</span></a>
+  <div class="header-breadcrumb"><a href="index.html">Home</a></div>
+  <span class="header-rail-badge">v3.2</span>
+</header>
+
+<nav class="sidebar">
+  <div class="nav-section">Overview</div>
+  <a href="index.html" class="active">Introduction</a>
+  <a href="index.html#architecture">Architecture</a>
+  <a href="index.html#deployment">Deployment Models</a>
+  <div class="nav-section">Administration</div>
+  <a href="installation.html">Installation</a>
+  <a href="user-management.html">User Management</a>
+  <div class="nav-section">Payment Configuration</div>
+  <a href="payment-rails.html">Payment Rail Connectors</a>
+  <div class="nav-section">Operations</div>
+  <a href="workflow.html">Workflow Engine</a>
+  <a href="monitoring.html">Monitoring &amp; Alerts</a>
+  <a href="compliance.html">Compliance Configuration</a>
+  <div class="nav-section">Reference</div>
+  <a href="troubleshooting.html">Troubleshooting</a>
+</nav>
+
+<main class="main">
+
+  <h1>PayPlus Enterprise — Administration Guide</h1>
+  <p class="topic-meta">
+    <span>Product: PayPlus Enterprise</span>
+    <span>Version: 3.2</span>
+    <span>Audience: System Administrators, Bank IT Operations</span>
+    <span>Last updated: March 2026</span>
+  </p>
+
+  <div class="note">
+    <strong>Document Scope</strong>
+    This guide covers system administration, configuration, and operations for PayPlus Enterprise v3.2. It is intended for bank IT staff responsible for installing, configuring, and maintaining the PayPlus system. End-user operations and payment processing workflows are documented separately in the <em>PayPlus Operator Guide</em>.
+  </div>
+
+  <h2 id="overview">Product Overview</h2>
+  <p>
+    PayPlus Enterprise is a multi-rail payment hub platform designed for financial institutions processing domestic and cross-border payments. It provides a unified processing engine, compliance controls, and settlement infrastructure across all major US and international payment rails — ACH, Fedwire, SWIFT, RTP, and FedNow.
+  </p>
+  <p>
+    PayPlus Enterprise replaces siloed, rail-specific processing systems with a single, integrated platform. All payment types share a common rules engine, approval workflow, audit trail, and compliance screening layer — reducing operational complexity and providing a consolidated view of payment activity across the institution.
+  </p>
+
+  <div class="section-grid">
+    <a class="section-card" href="installation.html">
+      <div class="section-card-icon">&#9881;</div>
+      <div class="section-card-title">Installation</div>
+      <div class="section-card-desc">System requirements, installation procedure, database setup, post-installation validation</div>
+    </a>
+    <a class="section-card" href="user-management.html">
+      <div class="section-card-icon">&#128100;</div>
+      <div class="section-card-title">User Management</div>
+      <div class="section-card-desc">User roles, permission matrix, LDAP integration, SSO (SAML 2.0), password policy</div>
+    </a>
+    <a class="section-card" href="payment-rails.html">
+      <div class="section-card-icon">&#128257;</div>
+      <div class="section-card-title">Payment Rail Connectors</div>
+      <div class="section-card-desc">Configuration for ACH, Fedwire, SWIFT, RTP, and FedNow connectors</div>
+    </a>
+    <a class="section-card" href="workflow.html">
+      <div class="section-card-icon">&#128203;</div>
+      <div class="section-card-title">Workflow Engine</div>
+      <div class="section-card-desc">Payment lifecycle, approval workflows, rules engine, STP configuration</div>
+    </a>
+    <a class="section-card" href="monitoring.html">
+      <div class="section-card-icon">&#128202;</div>
+      <div class="section-card-title">Monitoring &amp; Alerts</div>
+      <div class="section-card-desc">Dashboard, real-time queue, alert rules, SLA monitoring, settlement reports</div>
+    </a>
+    <a class="section-card" href="compliance.html">
+      <div class="section-card-icon">&#128737;</div>
+      <div class="section-card-title">Compliance Configuration</div>
+      <div class="section-card-desc">OFAC screening, hold queue management, AML integration, Travel Rule, audit trail</div>
+    </a>
+  </div>
+
+  <h2 id="architecture">System Architecture</h2>
+  <p>
+    PayPlus Enterprise is a three-tier Java EE application deployed on a supported application server. The platform follows a service-oriented architecture — payment processing, compliance screening, and connector management operate as discrete services that communicate via an internal message bus.
+  </p>
+
+  <div class="flow-diagram">
+    <div class="flow-box">Presentation<br><small>Web UI / API</small></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box">Application<br><small>Processing Engine</small></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box">Compliance<br><small>OFAC / AML</small></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box">Connectors<br><small>Rail Adapters</small></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box">Data<br><small>Oracle / SQL Server</small></div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Tier</th><th>Components</th><th>Function</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>Presentation</strong></td>
+          <td>PayPlus Web Console, REST API Gateway</td>
+          <td>User interface for operations staff; REST API for integration with core banking and host systems</td>
+        </tr>
+        <tr>
+          <td><strong>Application</strong></td>
+          <td>Payment Processing Engine, Rules Engine, Workflow Manager, Audit Service</td>
+          <td>Core payment orchestration — validates, routes, approves, and submits payment instructions to the appropriate rail connector</td>
+        </tr>
+        <tr>
+          <td><strong>Compliance</strong></td>
+          <td>OFAC Screening Module, AML Integration Adapter, Travel Rule Engine</td>
+          <td>Mandatory compliance checks applied to every outgoing payment before submission to the rail connector</td>
+        </tr>
+        <tr>
+          <td><strong>Connectors</strong></td>
+          <td>ACH Connector, Fedwire Connector, SWIFT Connector, RTP Connector, FedNow Connector</td>
+          <td>Rail-specific adapters that translate PayPlus internal format to the required network message standard and manage connectivity to each payment network</td>
+        </tr>
+        <tr>
+          <td><strong>Data</strong></td>
+          <td>PayPlus Database (Oracle 19c / SQL Server 2019), Message Store, Audit Repository</td>
+          <td>Persistent storage for payment records, configuration, audit logs, and message archives</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="deployment">Deployment Models</h2>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Model</th><th>Description</th><th>Typical Use Case</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>On-Premises</strong></td>
+          <td>PayPlus installed on institution-managed servers in a private data center. Full control over infrastructure, data residency, and network connectivity to payment networks.</td>
+          <td>Large banks with existing data center infrastructure and strict data residency requirements</td>
+        </tr>
+        <tr>
+          <td><strong>Private Cloud</strong></td>
+          <td>PayPlus deployed on institution-managed private cloud (VMware, OpenStack). Virtualized infrastructure with the operational control model of on-premises.</td>
+          <td>Institutions migrating from on-premises to cloud-managed infrastructure while maintaining control</td>
+        </tr>
+        <tr>
+          <td><strong>Hybrid</strong></td>
+          <td>Application and compliance tiers in private cloud; payment network connectivity (FedLine, SWIFTNet) maintained through dedicated on-premises hardware or managed connectivity service.</td>
+          <td>Institutions with regulatory constraints on cloud connectivity to payment networks</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="important">
+    <strong>FedLine and SWIFTNet Connectivity</strong>
+    FedLine Advantage (for Fedwire and FedNow) and SWIFTNet Alliance Access (for SWIFT messaging) require dedicated, certified hardware devices and cannot be deployed in public cloud environments. Ensure your network topology plan accounts for the physical location of these connectivity appliances before selecting a deployment model.
+  </div>
+
+  <h2 id="supported-rails">Supported Payment Rails</h2>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Rail</th><th>Network</th><th>Message Standard</th><th>Connector Status</th></tr></thead>
+      <tbody>
+        <tr><td>ACH</td><td>NACHA / Federal Reserve ACH, EPN</td><td>NACHA 94-character fixed-width</td><td><span class="badge badge-green">Available</span></td></tr>
+        <tr><td>Fedwire Funds</td><td>Federal Reserve Banks</td><td>ISO 20022 pacs.008 / pacs.009</td><td><span class="badge badge-green">Available</span></td></tr>
+        <tr><td>SWIFT</td><td>SWIFTNet</td><td>MT (legacy) + ISO 20022 MX</td><td><span class="badge badge-green">Available</span></td></tr>
+        <tr><td>RTP</td><td>The Clearing House</td><td>ISO 20022 pacs.008</td><td><span class="badge badge-green">Available</span></td></tr>
+        <tr><td>FedNow</td><td>Federal Reserve Banks</td><td>ISO 20022 pacs.008</td><td><span class="badge badge-green">Available</span></td></tr>
+        <tr><td>Fedwire Securities</td><td>Federal Reserve Banks</td><td>ISO 20022</td><td><span class="badge badge-yellow">Roadmap v3.5</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="docmap">Document Map</h2>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Section</th><th>Covers</th><th>Audience</th></tr></thead>
+      <tbody>
+        <tr><td><a href="installation.html">Installation</a></td><td>System requirements, installation procedure, database configuration, post-installation validation, upgrade guidance</td><td>System Administrator, DBA</td></tr>
+        <tr><td><a href="user-management.html">User Management</a></td><td>User roles, permissions matrix, creating users, LDAP/AD integration, SSO (SAML 2.0), password policy, session management</td><td>System Administrator, Security Team</td></tr>
+        <tr><td><a href="payment-rails.html">Payment Rail Connectors</a></td><td>Configuration parameters for each payment rail connector; connectivity testing; failover settings</td><td>System Administrator, Payments Operations</td></tr>
+        <tr><td><a href="workflow.html">Workflow Engine</a></td><td>Payment lifecycle states, approval workflow configuration, rules engine, payment templates, bulk processing</td><td>System Administrator, Payments Manager</td></tr>
+        <tr><td><a href="monitoring.html">Monitoring &amp; Alerts</a></td><td>Operational dashboard, real-time payment queue, alert rules, SLA monitoring, audit log viewer, settlement reports</td><td>System Administrator, Operations Manager</td></tr>
+        <tr><td><a href="compliance.html">Compliance Configuration</a></td><td>OFAC screening engine, sanctions list management, hold queue, AML integration, Travel Rule, regulatory reporting</td><td>System Administrator, Compliance Officer</td></tr>
+        <tr><td><a href="troubleshooting.html">Troubleshooting</a></td><td>System error codes, rail-specific error codes, common issues and resolution, log file locations, support escalation</td><td>System Administrator, Support</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</main>
+
+<footer class="site-footer">
+  <span>PayPlus Enterprise · Administration Guide · v3.2 · March 2026</span>
+  <span>Internal Use Only — Confidential</span>
+</footer>
+
+</body>
+</html>

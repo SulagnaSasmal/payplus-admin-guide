@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Troubleshooting — PayPlus Enterprise Administration Guide</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <a class="header-brand" href="index.html">PayPlus Enterprise <span>· Administration Guide</span></a>
+  <div class="header-breadcrumb"><a href="index.html">Home</a> › Troubleshooting</div>
+  <span class="header-rail-badge">v3.2</span>
+</header>
+
+<nav class="sidebar">
+  <div class="nav-section">Overview</div>
+  <a href="index.html">Introduction</a>
+  <a href="index.html#architecture">Architecture</a>
+  <div class="nav-section">Administration</div>
+  <a href="installation.html">Installation</a>
+  <a href="user-management.html">User Management</a>
+  <div class="nav-section">Payment Configuration</div>
+  <a href="payment-rails.html">Payment Rail Connectors</a>
+  <div class="nav-section">Operations</div>
+  <a href="workflow.html">Workflow Engine</a>
+  <a href="monitoring.html">Monitoring &amp; Alerts</a>
+  <a href="compliance.html">Compliance Configuration</a>
+  <div class="nav-section">Reference</div>
+  <a href="troubleshooting.html" class="active">Troubleshooting</a>
+  <div class="nav-section">On This Page</div>
+  <a href="#system-errors">System Error Codes</a>
+  <a href="#ach-errors">ACH Errors</a>
+  <a href="#wire-errors">Fedwire / SWIFT Errors</a>
+  <a href="#instant-errors">RTP / FedNow Errors</a>
+  <a href="#common-issues">Common Issues</a>
+  <a href="#log-files">Log Files</a>
+  <a href="#support">Support Escalation</a>
+</nav>
+
+<main class="main">
+
+  <h1>Troubleshooting</h1>
+  <p class="topic-meta">
+    <span>Applies to: PayPlus Enterprise v3.2</span>
+    <span>Last updated: March 2026</span>
+  </p>
+
+  <h2 id="system-errors">System Error Codes (1xxx)</h2>
+  <p>System errors indicate internal PayPlus platform issues — not payment rail errors. These appear in the PayPlus application log and may also be surfaced in the System Dashboard under Active Alerts.</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Code</th><th>Description</th><th>Resolution</th></tr></thead>
+      <tbody>
+        <tr><td><code class="rc-code">1001</code></td><td>Database connection failure — PayPlus cannot reach the database server.</td><td>Verify database server is running. Check <code>payplus.properties</code> DB connection parameters. Review database server logs. Check network connectivity from app server to DB server.</td></tr>
+        <tr><td><code class="rc-code">1002</code></td><td>Database connection pool exhausted — all database connections in use.</td><td>Increase <code>db.pool.max.connections</code> in <code>payplus.properties</code>. Check for long-running database queries or uncommitted transactions in the database. Review JVM heap allocation — insufficient memory causes slow query performance.</td></tr>
+        <tr><td><code class="rc-code">1010</code></td><td>OFAC screening engine unavailable — compliance screening cannot be performed.</td><td>Check the OFAC Screening Service status at Administration &gt; Compliance &gt; Screening Status. Restart the screening engine via <code>payplus-admin.sh restart-compliance</code>. All payments are automatically placed on hold until screening engine is restored.</td></tr>
+        <tr><td><code class="rc-code">1011</code></td><td>OFAC sanctions list stale — list has not been updated within the configured refresh window.</td><td>Trigger a manual list refresh at Administration &gt; Compliance &gt; List Management &gt; Refresh Now. If automatic refresh is failing, check outbound connectivity to the OFAC list endpoint. Review the compliance service log for HTTP error details.</td></tr>
+        <tr><td><code class="rc-code">1020</code></td><td>License validation failure — PayPlus license file is missing, expired, or invalid.</td><td>Verify <code>payplus.lic</code> is present in <code>config/license/</code>. Check the license expiry date at Administration &gt; System &gt; License. Contact your vendor account manager to renew.</td></tr>
+        <tr><td><code class="rc-code">1030</code></td><td>JVM heap space exhausted — application out of memory.</td><td>Increase <code>-Xmx</code> JVM setting (see Installation &gt; Application Server Configuration). Review for memory leaks — generate a heap dump with <code>jmap -dump:format=b,file=heap.hprof &lt;pid&gt;</code> and analyze with Eclipse MAT. Restart the service as a temporary measure.</td></tr>
+        <tr><td><code class="rc-code">1050</code></td><td>Scheduled job failure — a background processing job (e.g., ACH window processing, list update) did not complete.</td><td>Check the PayPlus Scheduler log at <code>logs/scheduler.log</code>. Identify the failing job and its exception. Most scheduler failures are transient — review if the job succeeds on the next cycle. If persistently failing, contact support.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="ach-errors">ACH Connector Errors (2xxx)</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Code</th><th>Description</th><th>Resolution</th></tr></thead>
+      <tbody>
+        <tr><td><code class="rc-code">2001</code></td><td>ACH SFTP connection failure — cannot reach the ACH operator SFTP server.</td><td>Verify SFTP host/port configuration. Confirm outbound network path to SFTP server is open. Test SSH key authentication manually using <code>ssh -i keyfile user@host</code>. Check if SSH key has expired (ACH operator may require periodic key rotation).</td></tr>
+        <tr><td><code class="rc-code">2010</code></td><td>NACHA file hash total mismatch — the calculated hash total does not match the control record.</td><td>This indicates a data integrity issue in the NACHA file generation. Check <code>logs/ach-connector.log</code> for the batch that generated the mismatch. Do not resubmit the file — contact PayPlus support with the file content for investigation.</td></tr>
+        <tr><td><code class="rc-code">2020</code></td><td>ACH processing window missed — payment was not submitted before the processing window cut-off.</td><td>Payment remains in <em>Approved</em> state. Operations must manually reschedule the payment for the next available window: Payments &gt; Queue &gt; select payment &gt; Reschedule. Inform the originator of the delay.</td></tr>
+        <tr><td><code class="rc-code">2030</code></td><td>FedACH file rejected — the submitted NACHA file was rejected by FedACH with an error notification.</td><td>Review the FedACH rejection notification in the ACH inbound directory. Common rejection causes: invalid ODFI routing number, file format error, duplicate file reference number. Correct the cause and resubmit. Do not resubmit a rejected file without correction — duplicate submission without correction will also be rejected.</td></tr>
+        <tr><td><code class="rc-code">2040</code></td><td>ACH return file processing error — PayPlus cannot parse an inbound return file from FedACH.</td><td>Check file format in <code>ach/inbound/</code> directory. Verify the file is a valid NACHA 94-character format. If the file is corrupted in transit, contact FedACH support for a retransmission. PayPlus logs the unparseable file to <code>logs/ach-returns.log</code>.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="wire-errors">Fedwire and SWIFT Connector Errors (3xxx / 4xxx)</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Code</th><th>Rail</th><th>Description</th><th>Resolution</th></tr></thead>
+      <tbody>
+        <tr><td><code class="rc-code">3001</code></td><td>Fedwire</td><td>FedLine connection timeout — no response from FedLine within configured timeout.</td><td>Check FedLine status at the Federal Reserve's FedLine service notification page. If FedLine is operational, verify the FedLine certificate has not expired (certificates must be renewed annually). Check firewall rules for outbound FedLine port.</td></tr>
+        <tr><td><code class="rc-code">3010</code></td><td>Fedwire</td><td>Fedwire message rejected — ISO 20022 message schema validation failed.</td><td>Review the rejected message in <code>logs/fedwire-connector.log</code>. Common causes: missing mandatory pacs.008 field (UETR, LEI, creditor address), amount format error, invalid BIC format. Correct the payment data and resubmit.</td></tr>
+        <tr><td><code class="rc-code">3020</code></td><td>Fedwire</td><td>Fedwire daylight overdraft — institution's Fed account has insufficient funds for the payment.</td><td>Contact Treasury to fund the Federal Reserve account. The payment will retry automatically when the account has sufficient balance, or can be manually held and resubmitted after funding. Monitor intraday Fed account balance via the Federal Reserve's account management portal.</td></tr>
+        <tr><td><code class="rc-code">3030</code></td><td>Fedwire</td><td>Fedwire submitted after operating hours — payment submitted outside the Fedwire operating window.</td><td>Fedwire operates Monday–Friday 9:00 PM ET (prior day) to 6:30 PM ET. Payments submitted outside these hours are held and submitted at the opening of the next Fedwire operating day. No action required — PayPlus will auto-submit at next open.</td></tr>
+        <tr><td><code class="rc-code">4001</code></td><td>SWIFT</td><td>SAA MQ connection failure — PayPlus cannot connect to SWIFTNet Alliance Access message queue.</td><td>Verify SAA server is running and accessible from PayPlus app server. Check MQ queue names in SWIFT connector configuration match SAA queue configuration. Verify SAA MQ listener is active on the configured port. Review <code>logs/swift-connector.log</code> for MQ exception details.</td></tr>
+        <tr><td><code class="rc-code">4010</code></td><td>SWIFT</td><td>SWIFT NAK (Negative Acknowledgement) received — SWIFTNet rejected the outbound message.</td><td>Review the NAK reason code in <code>logs/swift-connector.log</code>. Common causes: BIC not in SWIFT directory, MT message format error, invalid field 56A/57A correspondent BIC, value date not a valid banking day in the beneficiary country.</td></tr>
+        <tr><td><code class="rc-code">4020</code></td><td>SWIFT</td><td>SWIFT gSRP recall response timeout — no response received from the beneficiary bank for a camt.056 recall request within the SLA window.</td><td>Escalate the recall manually via bilateral SWIFT messaging. Escalation procedure: Operations &gt; SWIFT Recalls &gt; select recall &gt; Escalate to Manual. Document the escalation attempt in the payment record for regulatory purposes.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="instant-errors">RTP and FedNow Errors (5xxx)</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Code</th><th>Rail</th><th>Description</th><th>Resolution</th></tr></thead>
+      <tbody>
+        <tr><td><code class="rc-code">5001</code></td><td>RTP</td><td>TCH network connection lost — RTP connector cannot reach the TCH network.</td><td>Check TCH RTP service status notification (TCH provides a status portal to member banks). Verify TLS certificate for TCH connection has not expired. Review <code>logs/rtp-connector.log</code>. PayPlus automatically queues RTP payments during outage; they will not auto-retry — operations must manually release the queue once connectivity is restored.</td></tr>
+        <tr><td><code class="rc-code">5010</code></td><td>RTP</td><td>RTP payment timeout — Receiving Bank did not respond within the configured timeout window.</td><td>Payment status is <em>Timeout</em> — the payment is NOT settled. Notify the initiating customer that the payment did not complete. The customer may retry. Do not automatically retry — verify with TCH whether the original payment was delivered before resubmitting to avoid potential duplicate.</td></tr>
+        <tr><td><code class="rc-code">5020</code></td><td>RTP</td><td>RTP insufficient prefunded balance — TCH joint settlement account balance is too low to process the payment.</td><td>Treasury must fund the TCH settlement account via Fedwire transfer to the Federal Reserve Bank of New York. Payment will be rejected until the account is funded. Configure the RTP Balance Low alert to notify Treasury before balance reaches critical threshold.</td></tr>
+        <tr><td><code class="rc-code">5030</code></td><td>FedNow</td><td>FedNow LMT failure — Liquidity Management Transfer from Fed master account to FedNow balance was rejected.</td><td>Verify the Fed master account has sufficient balance. Check LMT configuration (threshold and transfer amount) at Administration &gt; Connectors &gt; FedNow. Contact your Federal Reserve Bank district relationship manager if LMT consistently fails.</td></tr>
+        <tr><td><code class="rc-code">5040</code></td><td>FedNow</td><td>FedNow receiving bank not participating — the payment destination bank is not enrolled in FedNow.</td><td>Route the payment to an alternative rail. Use the Rail Selection Rules Engine to configure automatic fallback: if Receiving Bank not in FedNow directory → attempt RTP → if not in RTP → route to ACH or Fedwire. Verify the Receiving Bank's FedNow participation status using the Federal Reserve's FedNow participant directory.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="common-issues">Common Issues and Resolution</h2>
+
+  <h3>Users Cannot Log In After LDAP Configuration Change</h3>
+  <p>If users cannot log in after an LDAP configuration change, verify:</p>
+  <ol>
+    <li>The Bind DN credentials are correct and the service account is active in LDAP.</li>
+    <li>The Base DN path is correct — a typo in the Base DN causes all LDAP searches to fail silently.</li>
+    <li>The LDAP server is reachable from the PayPlus app server on port 636 (LDAPS). Run: <code>openssl s_client -connect ad.bank.internal:636</code> to verify TLS connectivity.</li>
+    <li>The User Search Filter uses the correct attribute for your LDAP implementation (<code>sAMAccountName</code> for Active Directory; <code>uid</code> for OpenLDAP).</li>
+    <li>At least one local System Administrator account remains active as a fallback while LDAP issues are investigated.</li>
+  </ol>
+
+  <h3>ACH Return Rate Alert Triggered</h3>
+  <p>When an elevated return rate alert fires:</p>
+  <ol>
+    <li>Navigate to Operations &gt; Reports &gt; ACH Return Report. Filter for the past 7 days.</li>
+    <li>Identify the dominant return reason codes. High R05/R07/R10 rates indicate unauthorized transaction issues — review the originator's customer authorization procedures.</li>
+    <li>If the return rate for unauthorized transactions (R05, R07, R10, R29) exceeds 0.5%, NACHA requires the ODFI to identify and potentially suspend the originator. Contact your NACHA compliance representative.</li>
+    <li>Document the investigation and corrective actions in the PayPlus Compliance Notes for the affected ACH batch.</li>
+  </ol>
+
+  <h3>FedNow Payments Rejected After Weekend</h3>
+  <p>FedNow payments may be rejected Monday morning if the FedNow liquidity balance was not pre-funded before Fedwire close on Friday. To prevent this:</p>
+  <ol>
+    <li>Ensure the LMT (Liquidity Management Transfer) is configured and tested before weekends.</li>
+    <li>Review historical weekend FedNow volume and set the LMT threshold at 150% of average weekend peak to account for volume spikes.</li>
+    <li>Pre-fund the FedNow position with a Fedwire transfer before 5:00 PM ET Friday.</li>
+    <li>If payments were rejected over the weekend, contact affected customers and resubmit the payments on Monday morning after confirming the liquidity position is adequate.</li>
+  </ol>
+
+  <h2 id="log-files">Log File Locations</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Log File</th><th>Location</th><th>Contents</th></tr></thead>
+      <tbody>
+        <tr><td>Application Log</td><td><code>$PAYPLUS_HOME/logs/payplus.log</code></td><td>General application events, startup/shutdown, configuration loading errors</td></tr>
+        <tr><td>Payment Processing Log</td><td><code>$PAYPLUS_HOME/logs/payment-engine.log</code></td><td>Payment lifecycle state changes, validation results, submission confirmations</td></tr>
+        <tr><td>ACH Connector Log</td><td><code>$PAYPLUS_HOME/logs/ach-connector.log</code></td><td>ACH file generation, SFTP/FedLine transfer activity, return file processing</td></tr>
+        <tr><td>Fedwire Connector Log</td><td><code>$PAYPLUS_HOME/logs/fedwire-connector.log</code></td><td>FedLine session activity, pacs.008 submission/response, error details</td></tr>
+        <tr><td>SWIFT Connector Log</td><td><code>$PAYPLUS_HOME/logs/swift-connector.log</code></td><td>SAA MQ activity, message submission, ACK/NAK processing</td></tr>
+        <tr><td>RTP Connector Log</td><td><code>$PAYPLUS_HOME/logs/rtp-connector.log</code></td><td>TCH network session, pacs.008 submission, acceptance/return responses</td></tr>
+        <tr><td>FedNow Connector Log</td><td><code>$PAYPLUS_HOME/logs/fednow-connector.log</code></td><td>FedLine FedNow session, LMT activity, payment submission/settlement</td></tr>
+        <tr><td>Compliance Log</td><td><code>$PAYPLUS_HOME/logs/compliance.log</code></td><td>OFAC screening results, hold queue actions, list update events</td></tr>
+        <tr><td>Scheduler Log</td><td><code>$PAYPLUS_HOME/logs/scheduler.log</code></td><td>Background job execution — ACH windows, list updates, report generation</td></tr>
+        <tr><td>Audit Log</td><td>Database (PayPlus Audit Schema) — not a flat file</td><td>All user actions, payment state changes, configuration changes</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>Log files rotate daily. Configure log retention at <strong>Administration &gt; System &gt; Log Management</strong>. Default retention: 30 days of rolled log files. For compliance purposes, archive logs to your institution's long-term log storage (SIEM, cold storage) before deletion.</p>
+
+  <h2 id="support">Support Escalation</h2>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Issue Type</th><th>First Contact</th><th>Escalation</th></tr></thead>
+      <tbody>
+        <tr><td>PayPlus application errors (1xxx codes)</td><td>PayPlus Technical Support Portal — submit ticket with error code, log excerpt, and system snapshot (<code>payplus-admin.sh support-bundle</code>)</td><td>PayPlus support escalation (Severity 1: phone escalation available 24/7)</td></tr>
+        <tr><td>FedLine / Fedwire connectivity (3xxx codes)</td><td>Your Federal Reserve Bank district's FedLine support line</td><td>Federal Reserve Bank district relationship manager</td></tr>
+        <tr><td>FedNow connectivity (5030–5031)</td><td>Federal Reserve FedNow support line (provided in FedNow Service Agreement)</td><td>Federal Reserve Bank district relationship manager</td></tr>
+        <tr><td>TCH RTP connectivity (5001–5020)</td><td>TCH RTP participant support desk (requires TCH member institution credentials)</td><td>TCH account relationship team</td></tr>
+        <tr><td>SWIFTNet / SAA issues (4xxx codes)</td><td>SWIFT Customer Support (24/7 for connectivity issues)</td><td>SWIFT relationship manager</td></tr>
+        <tr><td>OFAC / compliance questions</td><td>Internal BSA/AML Compliance Officer</td><td>OFAC hotline: 1-800-540-6322 (for urgent sanctions questions)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="tip">
+    <strong>Support Bundle</strong>
+    Before contacting PayPlus Technical Support, generate a support bundle: <code>$PAYPLUS_HOME/bin/payplus-admin.sh support-bundle</code>. This captures logs, configuration (with passwords masked), thread dumps, and system information in a single archive. Attach the bundle to your support ticket to accelerate resolution.
+  </div>
+
+  <div class="doc-nav">
+    <a href="compliance.html">← Compliance Configuration</a>
+    <a href="index.html">Back to Introduction →</a>
+  </div>
+
+</main>
+
+<footer class="site-footer">
+  <span>PayPlus Enterprise · Troubleshooting · v3.2 · March 2026</span>
+  <span>Internal Use Only — Confidential</span>
+</footer>
+
+</body>
+</html>
