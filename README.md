@@ -2,6 +2,9 @@
 
 **A documentation portfolio project by Sulagna Sasmal — Senior Technical Writer | Documentation Architect**
 
+[![Live Site](https://img.shields.io/badge/Live%20Site-sulagnasasmal.github.io-E8A84C?style=flat-square&logo=githubpages&logoColor=black)](https://sulagnasasmal.github.io/payplus-admin-guide/)
+[![GitHub Repo](https://img.shields.io/badge/GitHub-payplus--admin--guide-181717?style=flat-square&logo=github)](https://github.com/SulagnaSasmal/payplus-admin-guide)
+
 ---
 
 ## About This Project
